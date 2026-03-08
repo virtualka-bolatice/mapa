@@ -228,24 +228,37 @@ function geolocate() {
 function _onGeoUpdate(pos) {
   const { latitude: lat, longitude: lng, accuracy: acc } = pos.coords;
 
-  // Přijmeme každý fix (live update), ale badge informuje o přesnosti
   _geoLatLng    = { lat, lng };
   _geoActive    = true;
   _bestAccuracy = Math.min(_bestAccuracy, acc);
 
-  // Aktualizuj / vytvoř marker
   _updateGeoMarker(lat, lng, acc);
 
   // Zobraz nav tlačítko při prvním fixu
   document.getElementById('nav-pick-btn')?.classList.add('on');
 
-  if (acc <= GEO_MAX_ACCURACY) {
-    badge(`📍 Poloha: ±${Math.round(acc)} m`);
-    // Při dosažení cílové přesnosti zastaví automaticky
-    clearTimeout(_geoSettleTimer);
-    // Pokračuj watchovat pro realtime aktualizace (nevolej clearWatch)
-  } else if (!_geoActive || acc < _bestAccuracy * 1.5) {
-    badge(`📍 Zpřesňuji polohu… ±${Math.round(acc)} m`);
+  const isNavOn = document.body.classList.contains('nav-on');
+  const accRnd  = Math.round(acc);
+
+  if (isNavOn) {
+    // V navigaci: jen stav polohy v nav-geo-status
+    const gs = document.getElementById('nav-geo-status');
+    if (gs) {
+      if (acc <= GEO_MAX_ACCURACY) {
+        gs.classList.remove('on');  // přesná poloha — schovat status
+      } else {
+        gs.textContent = `📍 Hledám přesnou polohu… ±${accRnd} m`;
+        gs.classList.add('on');
+      }
+    }
+  } else {
+    // Mimo navigaci: normální badge
+    if (acc <= GEO_MAX_ACCURACY) {
+      badge(`📍 Poloha: ±${accRnd} m`);
+      clearTimeout(_geoSettleTimer);
+    } else {
+      badge(`📍 Zpřesňuji polohu… ±${accRnd} m`);
+    }
   }
 }
 

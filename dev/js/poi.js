@@ -360,6 +360,12 @@ function toggleSub(k) {
 }
 
 function doSearch(q) {
+  // V pokročilém režimu vyhledávání POI nedostupné
+  if (typeof advancedMode !== 'undefined' && advancedMode) {
+    ST.searchQ = '';
+    renderResults();
+    return;
+  }
   ST.searchQ = q.trim();
   renderPOI();
   renderResults();

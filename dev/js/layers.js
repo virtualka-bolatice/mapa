@@ -276,6 +276,8 @@ function toggleAdvanced() {
   // Tlačítko stav
   document.getElementById('adv-btn').classList.toggle('on', advancedMode);
   document.getElementById('adv-pill').textContent = advancedMode ? 'ZAPNUTO' : 'VYPNUTO';
+  // body class pro CSS cílení (mobil: skryj ikony kategorií + search)
+  document.body.classList.toggle('adv-on', advancedMode);
 
   // IS DMVS sekce
   document.getElementById('qgis-sec').classList.toggle('visible', advancedMode);

@@ -164,7 +164,7 @@ function toggleNavPick() {
 }
 
 // ════════════════════════════════════════════════════════════════
-//  CONFIRM → načti trasy na pozadí → ukáž mode picker
+//  CONFIRM → zobraz picker se spinnerem → fetch → vyplň časy
 // ════════════════════════════════════════════════════════════════
 async function confirmNav() {
   if (_pendingLat === null) return;
@@ -175,12 +175,13 @@ async function confirmNav() {
   if (!geoPos) { badge('📍 Nejdříve zapni polohu'); return; }
 
   const tLat = _pendingLat, tLng = _pendingLng, tName = _pendingName;
-  _fetchedTarget = { lat: tLat, lng: tLng, name: tName };
+  _fetchedTarget  = { lat: tLat, lng: tLng, name: tName };
+  _fetchedDriveRoute = null;
+  _fetchedWalkRoute  = null;
 
-  // Ukáž picker hned (s loading stavem)
-  _showModePicker(tName, null, null, null, null);
+  // Zobraz picker ihned — spinner stav
+  _openModePicker(tName);
 
-  // Fetch obou tras paralelně
   const coord  = `${geoPos.lng},${geoPos.lat};${tLng},${tLat}`;
   const params = '?overview=full&geometries=geojson&steps=false';
 
@@ -189,8 +190,10 @@ async function confirmNav() {
       fetch(`${OSRM_BASE}/driving/${coord}${params}`),
       fetch(`${OSRM_BASE}/walking/${coord}${params}`),
     ]);
-    _fetchedDriveRoute = dr.status === 'fulfilled' && dr.value.ok ? (await dr.value.json()).routes?.[0] : null;
-    _fetchedWalkRoute  = wr.status === 'fulfilled' && wr.value.ok ? (await wr.value.json()).routes?.[0] : null;
+    _fetchedDriveRoute = dr.status === 'fulfilled' && dr.value.ok
+      ? (await dr.value.json()).routes?.[0] : null;
+    _fetchedWalkRoute  = wr.status === 'fulfilled' && wr.value.ok
+      ? (await wr.value.json()).routes?.[0]  : null;
   } catch(e) {
     console.error('nav fetch:', e);
   }
@@ -201,16 +204,17 @@ async function confirmNav() {
     return;
   }
 
-  // Přepočet chůze na reálnou rychlost
-  const walkCoords   = _fetchedWalkRoute ? _geoToLatLng(_fetchedWalkRoute.geometry) : [];
-  const walkDist     = _polyLen(walkCoords);
-  const walkDuration = walkDist > 0 ? Math.round(walkDist / WALK_SPEED_MS) : _fetchedWalkRoute?.duration;
+  // Přepočet chůze: reálná rychlost 4.5 km/h
+  const wc  = _fetchedWalkRoute ? _geoToLatLng(_fetchedWalkRoute.geometry) : [];
+  const wd  = _polyLen(wc);
+  const wt  = wd > 0 ? Math.round(wd / WALK_SPEED_MS) : (_fetchedWalkRoute?.duration ?? null);
 
-  // Aktualizuj picker s časy
-  _showModePicker(
-    tName,
-    _fetchedDriveRoute?.duration, _fetchedDriveRoute?.distance,
-    walkDuration,                 walkDist || _fetchedWalkRoute?.distance,
+  // Vyplň časy — přepne ze spinnerů na karty
+  _fillModePicker(
+    _fetchedDriveRoute?.duration  ?? null,
+    _fetchedDriveRoute?.distance  ?? null,
+    wt,
+    wd || (_fetchedWalkRoute?.distance ?? null),
   );
 }
 
@@ -229,39 +233,65 @@ function cancelNavPick() {
 // ════════════════════════════════════════════════════════════════
 //  MODE PICKER UI
 // ════════════════════════════════════════════════════════════════
-function _showModePicker(name, driveDur, driveDist, walkDur, walkDist) {
+
+// 1. Otevři picker ve spinner stavu
+function _openModePicker(name) {
   const el = document.getElementById('nav-mode-picker');
   if (!el) return;
 
   document.getElementById('nmp-dest-name').textContent = name || 'Cíl';
 
-  // Loading stav nebo skutečná data
-  const driveTimeEl = document.getElementById('nmp-drive-time');
-  const walkTimeEl  = document.getElementById('nmp-walk-time');
-  const driveDistEl = document.getElementById('nmp-drive-dist');
-  const walkDistEl  = document.getElementById('nmp-walk-dist');
+  // Zobraz spinner, schovej karty
+  const loading = document.getElementById('nmp-loading');
+  const opts    = document.getElementById('nmp-opts');
+  if (loading) loading.style.display = 'flex';
+  if (opts)    opts.style.display    = 'none';
 
-  if (driveDur === null) {
-    driveTimeEl.textContent = '…'; driveTimeEl.className = 'nmp-time loading';
-    walkTimeEl.textContent  = '…'; walkTimeEl.className  = 'nmp-time loading';
-    driveDistEl.textContent = ''; walkDistEl.textContent = '';
-  } else {
-    driveTimeEl.textContent = driveDur  ? _fmtDur(driveDur)  : '–'; driveTimeEl.className = 'nmp-time';
-    walkTimeEl.textContent  = walkDur   ? _fmtDur(walkDur)   : '–'; walkTimeEl.className  = 'nmp-time';
-    driveDistEl.textContent = driveDist ? _fmtDist(driveDist) : '';
-    walkDistEl.textContent  = walkDist  ? _fmtDist(walkDist)  : '';
-
-    // Nedostupnou možnost zašedi
-    if (!_fetchedDriveRoute) document.getElementById('nmp-drive')?.setAttribute('disabled','');
-    if (!_fetchedWalkRoute)  document.getElementById('nmp-walk')?.setAttribute('disabled','');
-  }
+  // Reset tlačítek
+  ['nmp-drive', 'nmp-walk'].forEach(id => {
+    document.getElementById(id)?.removeAttribute('disabled');
+  });
 
   el.classList.add('on');
 }
 
+// 2. Vyplň časy (přepne ze spinnerů na karty)
+function _fillModePicker(driveDur, driveDist, walkDur, walkDist) {
+  const loading = document.getElementById('nmp-loading');
+  const opts    = document.getElementById('nmp-opts');
+  if (loading) loading.style.display = 'none';
+  if (opts)    opts.style.display    = 'flex';
+
+  // Časy
+  const dt = document.getElementById('nmp-drive-time');
+  const wt = document.getElementById('nmp-walk-time');
+  const dd = document.getElementById('nmp-drive-dist');
+  const wd = document.getElementById('nmp-walk-dist');
+
+  if (dt) dt.textContent = driveDur  ? _fmtDur(driveDur)   : '–';
+  if (wt) wt.textContent = walkDur   ? _fmtDur(walkDur)    : '–';
+  if (dd) dd.textContent = driveDist ? _fmtDist(driveDist)  : '';
+  if (wd) wd.textContent = walkDist  ? _fmtDist(walkDist)   : '';
+
+  // Zašedi nedostupnou volbu
+  if (!_fetchedDriveRoute && document.getElementById('nmp-drive'))
+    document.getElementById('nmp-drive').disabled = true;
+  if (!_fetchedWalkRoute && document.getElementById('nmp-walk'))
+    document.getElementById('nmp-walk').disabled  = true;
+}
+
 function cancelModePicker() {
-  document.getElementById('nav-mode-picker')?.classList.remove('on');
+  const el = document.getElementById('nav-mode-picker');
+  el?.classList.remove('on');
   _fetchedDriveRoute = _fetchedWalkRoute = _fetchedTarget = null;
+
+  // Reset do výchozího stavu pro příští otevření
+  const loading = document.getElementById('nmp-loading');
+  const opts    = document.getElementById('nmp-opts');
+  if (loading) loading.style.display = 'flex';
+  if (opts)    opts.style.display    = 'none';
+  ['nmp-drive', 'nmp-walk'].forEach(id => document.getElementById(id)?.removeAttribute('disabled'));
+
   // Znovu zobraz nav-pick-btn pokud je geo aktivní
   if (typeof getGeoLatLng === 'function' && getGeoLatLng()) {
     document.getElementById('nav-pick-btn')?.classList.add('on');
@@ -345,7 +375,8 @@ async function _startNav(tLat, tLng, tName, mode) {
   _startTracking(tLat, tLng, tName);
 
   document.getElementById('fab-nav')?.classList.add('on');
-  badge('🧭 Navigace spuštěna');
+  // geo-status schovat až po získání první polohy (ui.js _onGeoUpdate to řídí)
+  // badge schován body.nav-on — použijeme nav-geo-status
 }
 
 // Volatelná z POI popupu (zpětná kompatibilita)
@@ -358,8 +389,9 @@ async function navigateTo(tLat, tLng, tName) {
   _pendingName = tName;
 
   // Fetch tras a ukáž picker
-  _fetchedTarget = { lat: tLat, lng: tLng, name: tName };
-  _showModePicker(tName, null, null, null, null);
+  _fetchedTarget     = { lat: tLat, lng: tLng, name: tName };
+  _fetchedDriveRoute = null; _fetchedWalkRoute = null;
+  _openModePicker(tName);
 
   const coord  = `${geoPos.lng},${geoPos.lat};${tLng},${tLat}`;
   const params = '?overview=full&geometries=geojson&steps=false';
@@ -374,9 +406,10 @@ async function navigateTo(tLat, tLng, tName) {
 
   const wc = _fetchedWalkRoute ? _geoToLatLng(_fetchedWalkRoute.geometry) : [];
   const wd = _polyLen(wc);
-  const wt = wd > 0 ? Math.round(wd / WALK_SPEED_MS) : _fetchedWalkRoute?.duration;
-  _showModePicker(tName,
-    _fetchedDriveRoute?.duration, _fetchedDriveRoute?.distance, wt, wd || _fetchedWalkRoute?.distance);
+  const wt = wd > 0 ? Math.round(wd / WALK_SPEED_MS) : (_fetchedWalkRoute?.duration ?? null);
+  _fillModePicker(
+    _fetchedDriveRoute?.duration ?? null, _fetchedDriveRoute?.distance ?? null,
+    wt, wd || (_fetchedWalkRoute?.distance ?? null));
 }
 
 // ════════════════════════════════════════════════════════════════

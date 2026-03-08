@@ -48,6 +48,7 @@
       ⊕ Vycentrovat
     </button>
   </div>
+  <div id="nav-geo-status">📍 Hledám přesnou polohu…</div>
 </div>
 
 <!-- ══ MODE PICKER — výběr způsobu dopravy ═════════════════════ -->
@@ -55,17 +56,22 @@
   <div id="nmp-card">
     <div class="nmp-title">Jak chceš jet?</div>
     <div class="nmp-dest"  id="nmp-dest-name">…</div>
-    <div class="nmp-opts">
+    <!-- Loading stav (spinner) — skrytý po načtení -->
+    <div class="nmp-loading-row" id="nmp-loading">
+      <div class="nmp-spinner"></div>
+      <span class="nmp-loading-txt">Načítám trasy…</span>
+    </div>
+    <div class="nmp-opts" id="nmp-opts" style="display:none">
       <button class="nmp-opt" id="nmp-drive" onclick="pickNavMode('driving')">
         <span class="nmp-ico">🚗</span>
         <span class="nmp-lbl">Autem</span>
-        <span class="nmp-time" id="nmp-drive-time">…</span>
+        <span class="nmp-time" id="nmp-drive-time">–</span>
         <span class="nmp-sub" id="nmp-drive-dist"></span>
       </button>
       <button class="nmp-opt" id="nmp-walk" onclick="pickNavMode('walking')">
         <span class="nmp-ico">🚶</span>
         <span class="nmp-lbl">Pěšky</span>
-        <span class="nmp-time" id="nmp-walk-time">…</span>
+        <span class="nmp-time" id="nmp-walk-time">–</span>
         <span class="nmp-sub" id="nmp-walk-dist"></span>
       </button>
     </div>

@@ -421,6 +421,14 @@ body.nav-on #dbadge { display: none !important; }
   font-family: 'Syne', sans-serif; font-size: 1.3rem; font-weight: 800; color: var(--text);
 }
 .nav-dist { font-size: .7rem; color: var(--muted); }
+/* Geo status řádek v nav widgetu (jen při hledání polohy) */
+#nav-geo-status {
+  display: none; font-size: .65rem; color: var(--acc3);
+  text-align: center; padding-top: 4px;
+  border-top: 1px solid var(--border); margin-top: 6px;
+  animation: blink 1.5s ease-in-out infinite;
+}
+#nav-geo-status.on { display: block; }
 
 .nav-actions { display: flex; gap: 5px; }
 .nav-act-btn {
@@ -505,8 +513,21 @@ body.nav-on #dbadge { display: none !important; }
 .nmp-lbl  { font-family: 'Syne', sans-serif; font-weight: 700; font-size: .85rem; color: var(--text); }
 .nmp-time { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 1.1rem; color: var(--acc3); min-height: 1.4em; }
 .nmp-sub  { font-size: .68rem; color: var(--muted); min-height: 1em; }
-/* Loading skeleton pro časy */
-.nmp-time.loading { color: var(--dim); animation: blink 1s ease-in-out infinite; }
+/* Loading ring uvnitř karty */
+.nmp-loading-row, #nmp-loading {
+  display: flex; align-items: center; justify-content: center;
+  gap: 8px; padding: 6px 0;
+}
+.nmp-spinner {
+  width: 18px; height: 18px; border-radius: 50%;
+  border: 2px solid var(--border); border-top-color: var(--acc3);
+  animation: spin .7s linear infinite; flex-shrink: 0;
+}
+.nmp-loading-txt { font-size: .74rem; color: var(--muted); }
+/* Disabled karta */
+.nmp-opt:disabled { opacity: .4; cursor: not-allowed; pointer-events: none; }
+/* Vybraná karta (hover stav) */
+.nmp-opt:not(:disabled):hover { border-color: var(--acc3); background: rgba(14,165,233,.1); }
 .nmp-cancel {
   background: none; border: 1px solid var(--border); color: var(--muted);
   border-radius: 8px; padding: 7px; font-family: inherit; font-size: .75rem;
@@ -772,6 +793,12 @@ body.nav-on #dbadge { display: none !important; }
 
   /* Badge — přes celou šířku, ne vlevo */
   #dbadge { font-size: .62rem; }
+
+  /* Pokročilý režim na mobilu — skryj kategorie ikony + search */
+  body.adv-on #mob-cat-icons  { display: none !important; }
+  body.adv-on #mob-srch-btn   { display: none !important; }
+  body.adv-on #mob-search     { display: none !important; }
+  /* mob-bs-top zůstane — jen bude bez ikon (jen pill) */
 
   /* Kategorie chips — skryté v mobilním BS (filtry jsou v peek ikonách) */
   #poi-cats-sec { display: none !important; }
