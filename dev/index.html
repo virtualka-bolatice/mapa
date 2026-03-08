@@ -29,32 +29,52 @@
   <img id="lb-img" src="" alt="">
 </div>
 
-<!-- ══ NAVIGAČNÍ WIDGET ═════════════════════════════════════════ -->
+<!-- ══ NAVIGAČNÍ WIDGET (aktivní trasa) ════════════════════════ -->
 <div id="nav-widget">
   <div class="nav-head">
-    <div class="nav-icon">🧭</div>
+    <span class="nav-mode-ico" id="nav-mode-ico">🚗</span>
     <div class="nav-dest-name" id="nav-dest-name">Navigace</div>
-    <button class="nav-close" onclick="clearNav()">✕</button>
+    <button class="nav-close" onclick="clearNav()" title="Ukončit navigaci">✕</button>
   </div>
-  <div class="nav-times">
-    <div class="nav-time">
-      <span class="nav-time-ico">🚗</span>
-      <div>
-        <div class="nav-time-val" id="nav-drive-time">–</div>
-        <div class="nav-time-lbl">autem</div>
-      </div>
-    </div>
-    <div class="nav-sep"></div>
-    <div class="nav-time">
-      <span class="nav-time-ico">🚶</span>
-      <div>
-        <div class="nav-time-val" id="nav-walk-time">–</div>
-        <div class="nav-time-lbl">pěšky</div>
-      </div>
-    </div>
+  <div class="nav-main-row">
+    <div class="nav-time-val" id="nav-active-time">–</div>
+    <div class="nav-dist"    id="nav-dist"></div>
   </div>
-  <div class="nav-dist" id="nav-dist"></div>
+  <div class="nav-actions">
+    <button class="nav-act-btn" id="nav-follow-btn" onclick="toggleNavFollow()" title="Sledovat polohu">
+      <span id="nav-follow-ico">⊙</span> Sledovat
+    </button>
+    <button class="nav-act-btn" id="nav-recenter-btn2" onclick="navRecenter()" title="Vycentrovat">
+      ⊕ Vycentrovat
+    </button>
+  </div>
 </div>
+
+<!-- ══ MODE PICKER — výběr způsobu dopravy ═════════════════════ -->
+<div id="nav-mode-picker">
+  <div id="nmp-card">
+    <div class="nmp-title">Jak chceš jet?</div>
+    <div class="nmp-dest"  id="nmp-dest-name">…</div>
+    <div class="nmp-opts">
+      <button class="nmp-opt" id="nmp-drive" onclick="pickNavMode('driving')">
+        <span class="nmp-ico">🚗</span>
+        <span class="nmp-lbl">Autem</span>
+        <span class="nmp-time" id="nmp-drive-time">…</span>
+        <span class="nmp-sub" id="nmp-drive-dist"></span>
+      </button>
+      <button class="nmp-opt" id="nmp-walk" onclick="pickNavMode('walking')">
+        <span class="nmp-ico">🚶</span>
+        <span class="nmp-lbl">Pěšky</span>
+        <span class="nmp-time" id="nmp-walk-time">…</span>
+        <span class="nmp-sub" id="nmp-walk-dist"></span>
+      </button>
+    </div>
+    <button class="nmp-cancel" onclick="cancelModePicker()">Zrušit</button>
+  </div>
+</div>
+
+<!-- ══ RECENTER BUTTON — zobrazí se při pohybu mapy v nav ══════ -->
+<button id="nav-recenter-btn" onclick="navRecenter()">⊕ Vycentrovat</button>
 
 <!-- ══ APLIKACE ═════════════════════════════════════════════════ -->
 <div id="app">

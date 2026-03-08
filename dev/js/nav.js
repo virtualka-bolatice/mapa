@@ -1,93 +1,105 @@
 'use strict';
 
 // ════════════════════════════════════════════════════════════════
-//  nav.js — Navigace: výběr cíle, OSRM trasa, live tracking
+//  nav.js — Navigace: mode picker, follow + heading, recenter
 //
 //  FLOW:
-//    1. geolocate() v ui.js → zobrazí #nav-pick-btn
-//    2. Klik → pick mode (crosshair), klik na mapu → Nominatim
-//    3. Potvrzovací bar → confirmNav() → OSRM fetch (driving+walking)
-//    4. Live GPS watch: trimuje ujetou část trasy, aktualizuje časy
+//    1. geolocate() → nav-pick-btn viditelný
+//    2. toggleNavPick() → crosshair, klik → Nominatim → nav-confirm
+//    3. confirmNav() → fetchRoutes() v pozadí → showModePicker() s časy
+//    4. pickNavMode('driving'|'walking') → navigateTo() → trasa na mapě
+//    5. Follow mode: mapa sleduje GPS, heading marker rotuje
+//    6. Pohyb mapy → recenter-btn; klik → znovu centruje + follow on
 //
-//  Odhadovaná rychlost chůze: 4.5 km/h (reálnější než OSRM default 5 km/h)
 //  Deaktivace: zakomentuj <script src="js/nav.js"> v index.html
 // ════════════════════════════════════════════════════════════════
 
-const OSRM_BASE   = 'https://router.project-osrm.org/route/v1';
-const NOM_BASE    = 'https://nominatim.openstreetmap.org/reverse';
-
-// Rychlost chůze: 4.5 km/h → 1.25 m/s — OSRM walking profil jezdí
-// default 5 km/h, ale reálná městská chůze je 4–4.5 km/h
-const WALK_SPEED_MS = 1.25;
+const OSRM_BASE     = 'https://router.project-osrm.org/route/v1';
+const NOM_BASE      = 'https://nominatim.openstreetmap.org/reverse';
+const WALK_SPEED_MS = 1.25;   // 4.5 km/h — realističtější než OSRM default
+const ARRIVE_M      = 25;     // m — "cíl dosažen"
 
 // ── Stav ─────────────────────────────────────────────────────────
-let _navPickActive    = false;
-let _pendingLat       = null;
-let _pendingLng       = null;
-let _pendingName      = null;
-let _pickDotMarker    = null;
+let _navPickActive = false;
+let _pendingLat    = null;
+let _pendingLng    = null;
+let _pendingName   = null;
+let _pickDotMarker = null;
 
-// Vrstvy trasy
-let _driveFullCoords  = [];   // [[lat,lng], …] – kompletní trasa auto
-let _walkFullCoords   = [];   // [[lat,lng], …] – kompletní trasa pěšky
-let _driveLayerDone   = null; // šedá (projeto) – auto
-let _driveLayerTodo   = null; // modrá (zbývá)  – auto
-let _walkLayerDone    = null; // šedá (projeto) – pěšky
-let _walkLayerTodo    = null; // zelená (zbývá) – pěšky
-let _driveShadow      = null; // glow shadow auto
-let _navDestMarker    = null;
-let _navPosMarker     = null; // aktuální poloha marker (přesný)
+// Mode picker — předem načtené trasy
+let _fetchedDriveRoute = null;
+let _fetchedWalkRoute  = null;
+let _fetchedTarget     = null;   // { lat, lng, name }
 
-// GPS watching
-let _watchId          = null;   // navigator.geolocation.watchPosition ID
-let _lastPos          = null;   // { lat, lng } — poslední známá poloha
-let _navDriveRemDist  = 0;
-let _navWalkRemDist   = 0;
-let _navMode          = null;   // null | 'drive' | 'walk'
-let _navActive        = false;
+// Aktivní navigace
+let _navMode           = null;   // 'driving' | 'walking'
+let _navActive         = false;
+let _driveFullCoords   = [];
+let _walkFullCoords    = [];
+let _activeFullCoords  = [];     // aktuálně aktivní trasa
 
-// ── ROUTING ─────────────────────────────────────────────────────────
+// Vrstvy
+let _layerDone    = null;   // šedá (projeto)
+let _layerTodo    = null;   // barevná (zbývá)
+let _layerShadow  = null;   // glow
+let _destMarker   = null;
+let _posMarker    = null;   // šipkový heading marker
 
-// Převod GeoJSON souřadnic [lng,lat] → [[lat,lng], …]
+// GPS tracking
+let _trackWatchId = null;
+let _trackTarget  = null;
+let _remDist      = 0;
+let _avgSpeedMS   = 13.9;   // m/s — průměrná auto rychlost z route
+
+// Follow + heading
+let _followMode   = false;
+let _lastHeading  = null;
+let _mapMoved     = false;  // uživatel pohnul mapou
+
+// ════════════════════════════════════════════════════════════════
+//  UTILITY
+// ════════════════════════════════════════════════════════════════
 function _geoToLatLng(geom) {
   return geom.coordinates.map(c => [c[1], c[0]]);
 }
 
-// Vzdálenost dvou LatLng v metrech (Haversine)
 function _haversine(a, b) {
   const R = 6371000;
   const dLat = (b[0] - a[0]) * Math.PI / 180;
   const dLng = (b[1] - a[1]) * Math.PI / 180;
-  const sinA  = Math.sin(dLat / 2);
-  const sinB  = Math.sin(dLng / 2);
-  const c = sinA * sinA + Math.cos(a[0] * Math.PI / 180) *
-            Math.cos(b[0] * Math.PI / 180) * sinB * sinB;
-  return 2 * R * Math.asin(Math.sqrt(c));
+  const s1   = Math.sin(dLat / 2), s2 = Math.sin(dLng / 2);
+  return 2 * R * Math.asin(Math.sqrt(s1*s1 + Math.cos(a[0]*Math.PI/180)*Math.cos(b[0]*Math.PI/180)*s2*s2));
 }
 
-// Délka polyline v metrech
 function _polyLen(coords) {
   let d = 0;
   for (let i = 1; i < coords.length; i++) d += _haversine(coords[i-1], coords[i]);
   return d;
 }
 
-// Nalezne nejbližší bod na polyline k dané poloze
-// Vrátí { idx: index segmentu, trimmedCoords: zbývající souřadnice }
-function _trimRoute(coords, posLat, posLng) {
-  if (coords.length < 2) return { idx: 0, trimmedCoords: coords };
-  const pos = [posLat, posLng];
-  let minD  = Infinity, minI = 0;
-  for (let i = 0; i < coords.length; i++) {
-    const d = _haversine(pos, coords[i]);
-    if (d < minD) { minD = d; minI = i; }
-  }
-  // Vrátíme zbývající část — od nejbližšího bodu dál
-  return { idx: minI, trimmedCoords: coords.slice(minI) };
+function _trimRoute(coords, lat, lng) {
+  if (coords.length < 2) return { idx: 0, trimmed: coords };
+  let minD = Infinity, minI = 0;
+  const pos = [lat, lng];
+  coords.forEach((c, i) => { const d = _haversine(pos, c); if (d < minD) { minD = d; minI = i; } });
+  return { idx: minI, trimmed: coords.slice(minI) };
 }
 
-// ── PICK MODE ───────────────────────────────────────────────────
+function _fmtDur(sec) {
+  if (!sec || sec < 0) return '–';
+  const h = Math.floor(sec / 3600);
+  const m = Math.ceil((sec % 3600) / 60);
+  return h > 0 ? `${h} h ${m} min` : `${m} min`;
+}
 
+function _fmtDist(m) {
+  if (!m) return '';
+  return m < 1000 ? `${Math.round(m)} m` : `${(m/1000).toFixed(1)} km`;
+}
+
+// ════════════════════════════════════════════════════════════════
+//  PICK MODE — výběr cíle kliknutím na mapu
+// ════════════════════════════════════════════════════════════════
 function _removePick() {
   if (_pickDotMarker) { try { map.removeLayer(_pickDotMarker); } catch(e){} _pickDotMarker = null; }
 }
@@ -102,7 +114,6 @@ async function _onMapPick(e) {
   const lbl = document.getElementById('nav-pick-lbl');
   if (lbl) lbl.textContent = 'Změnit cíl';
 
-  // Dočasný marker
   _removePick();
   _pickDotMarker = L.marker([lat, lng], {
     icon: L.divIcon({
@@ -113,7 +124,6 @@ async function _onMapPick(e) {
     zIndexOffset: 1000,
   }).addTo(map);
 
-  // Nominatim reverse geocoding
   const nc = document.getElementById('nc-dest-name');
   if (nc) nc.textContent = '⏳ Hledám adresu…';
   document.getElementById('nav-confirm')?.classList.add('on');
@@ -123,14 +133,9 @@ async function _onMapPick(e) {
       `${NOM_BASE}?lat=${lat}&lon=${lng}&format=json&zoom=17&addressdetails=0`,
       { headers: { 'Accept-Language': 'cs' } }
     );
-    if (r.ok) {
-      const d = await r.json();
-      _pendingName = d.display_name
-        ? d.display_name.split(',').slice(0, 2).join(', ')
-        : `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
-    } else {
-      _pendingName = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
-    }
+    _pendingName = r.ok
+      ? ((await r.json()).display_name || '').split(',').slice(0, 2).join(', ') || `${lat.toFixed(5)}, ${lng.toFixed(5)}`
+      : `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
   } catch(e) {
     _pendingName = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
   }
@@ -158,11 +163,55 @@ function toggleNavPick() {
   badge('🎯 Klikni na mapu pro výběr cíle');
 }
 
-function confirmNav() {
+// ════════════════════════════════════════════════════════════════
+//  CONFIRM → načti trasy na pozadí → ukáž mode picker
+// ════════════════════════════════════════════════════════════════
+async function confirmNav() {
   if (_pendingLat === null) return;
   document.getElementById('nav-confirm')?.classList.remove('on');
   document.getElementById('nav-pick-btn')?.classList.remove('on');
-  navigateTo(_pendingLat, _pendingLng, _pendingName);
+
+  const geoPos = (typeof getGeoLatLng === 'function') ? getGeoLatLng() : null;
+  if (!geoPos) { badge('📍 Nejdříve zapni polohu'); return; }
+
+  const tLat = _pendingLat, tLng = _pendingLng, tName = _pendingName;
+  _fetchedTarget = { lat: tLat, lng: tLng, name: tName };
+
+  // Ukáž picker hned (s loading stavem)
+  _showModePicker(tName, null, null, null, null);
+
+  // Fetch obou tras paralelně
+  const coord  = `${geoPos.lng},${geoPos.lat};${tLng},${tLat}`;
+  const params = '?overview=full&geometries=geojson&steps=false';
+
+  try {
+    const [dr, wr] = await Promise.allSettled([
+      fetch(`${OSRM_BASE}/driving/${coord}${params}`),
+      fetch(`${OSRM_BASE}/walking/${coord}${params}`),
+    ]);
+    _fetchedDriveRoute = dr.status === 'fulfilled' && dr.value.ok ? (await dr.value.json()).routes?.[0] : null;
+    _fetchedWalkRoute  = wr.status === 'fulfilled' && wr.value.ok ? (await wr.value.json()).routes?.[0] : null;
+  } catch(e) {
+    console.error('nav fetch:', e);
+  }
+
+  if (!_fetchedDriveRoute && !_fetchedWalkRoute) {
+    cancelModePicker();
+    badge('❌ Trasa nenalezena — zkontroluj připojení');
+    return;
+  }
+
+  // Přepočet chůze na reálnou rychlost
+  const walkCoords   = _fetchedWalkRoute ? _geoToLatLng(_fetchedWalkRoute.geometry) : [];
+  const walkDist     = _polyLen(walkCoords);
+  const walkDuration = walkDist > 0 ? Math.round(walkDist / WALK_SPEED_MS) : _fetchedWalkRoute?.duration;
+
+  // Aktualizuj picker s časy
+  _showModePicker(
+    tName,
+    _fetchedDriveRoute?.duration, _fetchedDriveRoute?.distance,
+    walkDuration,                 walkDist || _fetchedWalkRoute?.distance,
+  );
 }
 
 function cancelNavPick() {
@@ -177,339 +226,378 @@ function cancelNavPick() {
   if (lbl) lbl.textContent = 'Vybrat cíl na mapě';
 }
 
-// ── NAVIGACE (volatelná i z POI popupu) ──────────────────────────
-async function navigateTo(targetLat, targetLng, targetName) {
-  const geoPos = (typeof getGeoLatLng === 'function') ? getGeoLatLng() : null;
-  if (!geoPos) {
-    badge('📍 Nejdříve zapni polohu (📍 tlačítko)');
-    return;
+// ════════════════════════════════════════════════════════════════
+//  MODE PICKER UI
+// ════════════════════════════════════════════════════════════════
+function _showModePicker(name, driveDur, driveDist, walkDur, walkDist) {
+  const el = document.getElementById('nav-mode-picker');
+  if (!el) return;
+
+  document.getElementById('nmp-dest-name').textContent = name || 'Cíl';
+
+  // Loading stav nebo skutečná data
+  const driveTimeEl = document.getElementById('nmp-drive-time');
+  const walkTimeEl  = document.getElementById('nmp-walk-time');
+  const driveDistEl = document.getElementById('nmp-drive-dist');
+  const walkDistEl  = document.getElementById('nmp-walk-dist');
+
+  if (driveDur === null) {
+    driveTimeEl.textContent = '…'; driveTimeEl.className = 'nmp-time loading';
+    walkTimeEl.textContent  = '…'; walkTimeEl.className  = 'nmp-time loading';
+    driveDistEl.textContent = ''; walkDistEl.textContent = '';
+  } else {
+    driveTimeEl.textContent = driveDur  ? _fmtDur(driveDur)  : '–'; driveTimeEl.className = 'nmp-time';
+    walkTimeEl.textContent  = walkDur   ? _fmtDur(walkDur)   : '–'; walkTimeEl.className  = 'nmp-time';
+    driveDistEl.textContent = driveDist ? _fmtDist(driveDist) : '';
+    walkDistEl.textContent  = walkDist  ? _fmtDist(walkDist)  : '';
+
+    // Nedostupnou možnost zašedi
+    if (!_fetchedDriveRoute) document.getElementById('nmp-drive')?.setAttribute('disabled','');
+    if (!_fetchedWalkRoute)  document.getElementById('nmp-walk')?.setAttribute('disabled','');
   }
-  const oLat = geoPos.lat, oLng = geoPos.lng;
 
+  el.classList.add('on');
+}
+
+function cancelModePicker() {
+  document.getElementById('nav-mode-picker')?.classList.remove('on');
+  _fetchedDriveRoute = _fetchedWalkRoute = _fetchedTarget = null;
+  // Znovu zobraz nav-pick-btn pokud je geo aktivní
+  if (typeof getGeoLatLng === 'function' && getGeoLatLng()) {
+    document.getElementById('nav-pick-btn')?.classList.add('on');
+  }
+}
+
+async function pickNavMode(mode) {
+  document.getElementById('nav-mode-picker')?.classList.remove('on');
+  _navMode = mode;
+  const t  = _fetchedTarget;
+  if (!t) return;
+  await _startNav(t.lat, t.lng, t.name, mode);
+}
+
+// ════════════════════════════════════════════════════════════════
+//  START NAVIGACE
+// ════════════════════════════════════════════════════════════════
+async function _startNav(tLat, tLng, tName, mode) {
   clearNav();
-  // Skryj geo marker/kruh — poloha stále aktivní pro tracking
   if (typeof hideGeoVisuals === 'function') hideGeoVisuals();
-  badge('🧭 Načítám trasu…');
 
+  const route = mode === 'driving' ? _fetchedDriveRoute : _fetchedWalkRoute;
+  if (!route) { badge('❌ Trasa nedostupná pro zvolený způsob'); return; }
+
+  if (!map.getPane('navPane')) {
+    map.createPane('navPane');
+    map.getPane('navPane').style.zIndex = 350;
+  }
+
+  const coords = _geoToLatLng(route.geometry);
+  if (mode === 'driving') {
+    _driveFullCoords  = coords;
+    _walkFullCoords   = _fetchedWalkRoute ? _geoToLatLng(_fetchedWalkRoute.geometry) : [];
+  } else {
+    _walkFullCoords   = coords;
+    _driveFullCoords  = _fetchedDriveRoute ? _geoToLatLng(_fetchedDriveRoute.geometry) : [];
+  }
+  _activeFullCoords = coords;
+
+  const dist = _polyLen(coords);
+  const dur  = mode === 'driving'
+    ? route.duration
+    : Math.round(dist / WALK_SPEED_MS);
+
+  if (route.duration && route.distance) {
+    _avgSpeedMS = route.distance / route.duration;
+  }
+
+  // Vykresli trasu
+  _drawActiveRoute(coords, mode);
+
+  // Marker cíle
+  _destMarker = L.marker([tLat, tLng], {
+    icon: L.divIcon({
+      html: `<div style="width:22px;height:22px;background:#f97316;border:3px solid #fff;
+               border-radius:50%;box-shadow:0 0 14px #f97316aa;
+               display:flex;align-items:center;justify-content:center;font-size:.72rem;">🎯</div>`,
+      className: '', iconSize: [22,22], iconAnchor: [11,11],
+    }),
+    pane: 'navPane', zIndexOffset: 500,
+  }).addTo(map).bindPopup(`<div style="padding:6px 10px;font-size:.75rem;font-family:DM Sans,sans-serif">
+    🎯 <strong>${tName || 'Cíl'}</strong></div>`);
+
+  // Widget
+  _showNavWidget(mode, tName, dur, dist);
+
+  // body.nav-on — skryje badge + nav-pick-btn
+  document.body.classList.add('nav-on');
+  _navActive = true;
+
+  // Fit bounds
+  try { map.fitBounds(L.latLngBounds(coords).pad(.12)); } catch(e) {}
+
+  // Follow zapnutý defaultně
+  _setFollow(true);
+
+  // Sleduj pohyb mapy → zobraz recenter
+  map.on('dragstart', _onMapDrag);
+
+  // Spusť tracking
+  _startTracking(tLat, tLng, tName);
+
+  document.getElementById('fab-nav')?.classList.add('on');
+  badge('🧭 Navigace spuštěna');
+}
+
+// Volatelná z POI popupu (zpětná kompatibilita)
+async function navigateTo(tLat, tLng, tName) {
+  const geoPos = (typeof getGeoLatLng === 'function') ? getGeoLatLng() : null;
+  if (!geoPos) { badge('📍 Nejdříve zapni polohu'); return; }
+
+  _pendingLat  = tLat;
+  _pendingLng  = tLng;
+  _pendingName = tName;
+
+  // Fetch tras a ukáž picker
+  _fetchedTarget = { lat: tLat, lng: tLng, name: tName };
+  _showModePicker(tName, null, null, null, null);
+
+  const coord  = `${geoPos.lng},${geoPos.lat};${tLng},${tLat}`;
+  const params = '?overview=full&geometries=geojson&steps=false';
   try {
-    if (!map.getPane('navPane')) {
-      map.createPane('navPane');
-      map.getPane('navPane').style.zIndex = 350;
-    }
-
-    const coord  = `${oLng},${oLat};${targetLng},${targetLat}`;
-    const params = '?overview=full&geometries=geojson&steps=false';
-
-    const [driveRes, walkRes] = await Promise.allSettled([
+    const [dr, wr] = await Promise.allSettled([
       fetch(`${OSRM_BASE}/driving/${coord}${params}`),
       fetch(`${OSRM_BASE}/walking/${coord}${params}`),
     ]);
+    _fetchedDriveRoute = dr.status === 'fulfilled' && dr.value.ok ? (await dr.value.json()).routes?.[0] : null;
+    _fetchedWalkRoute  = wr.status === 'fulfilled' && wr.value.ok ? (await wr.value.json()).routes?.[0] : null;
+  } catch(e) { cancelModePicker(); badge('❌ Chyba trasy'); return; }
 
-    const driveData = driveRes.status === 'fulfilled' && driveRes.value.ok
-      ? await driveRes.value.json() : null;
-    const walkData  = walkRes.status  === 'fulfilled' && walkRes.value.ok
-      ? await walkRes.value.json()  : null;
+  const wc = _fetchedWalkRoute ? _geoToLatLng(_fetchedWalkRoute.geometry) : [];
+  const wd = _polyLen(wc);
+  const wt = wd > 0 ? Math.round(wd / WALK_SPEED_MS) : _fetchedWalkRoute?.duration;
+  _showModePicker(tName,
+    _fetchedDriveRoute?.duration, _fetchedDriveRoute?.distance, wt, wd || _fetchedWalkRoute?.distance);
+}
 
-    if (!driveData?.routes?.length && !walkData?.routes?.length) {
-      badge('❌ Trasa nenalezena — zkontroluj připojení');
-      return;
-    }
+// ════════════════════════════════════════════════════════════════
+//  KRESLENÍ TRASY
+// ════════════════════════════════════════════════════════════════
+function _drawActiveRoute(coords, mode) {
+  [_layerShadow, _layerDone, _layerTodo].forEach(l => { if(l) try{ map.removeLayer(l); }catch(e){} });
 
-    const driveRoute = driveData?.routes?.[0];
-    const walkRoute  = walkData?.routes?.[0];
+  const color = mode === 'driving' ? '#3b82f6' : '#10b981';
+  const w     = mode === 'driving' ? 5 : 3;
+  const dash  = mode === 'walking' ? '7,5' : undefined;
 
-    // ── Převod geometrie na [[lat,lng]] ──
-    if (driveRoute) _driveFullCoords = _geoToLatLng(driveRoute.geometry);
-    if (walkRoute)  _walkFullCoords  = _geoToLatLng(walkRoute.geometry);
+  _layerShadow = L.polyline(coords, {
+    pane: 'navPane', color: mode === 'driving' ? '#1e40af' : '#065f46',
+    weight: w + 4, opacity: .2, lineCap: 'round', lineJoin: 'round',
+  }).addTo(map);
 
-    // ── Urči pěší vzdálenost (přepočet na reálnou rychlost) ──
-    // OSRM walking vrací duration pro ~5 km/h, my chceme 4.5 km/h
-    // Přepočet: dist / WALK_SPEED_MS
-    const walkDist = walkRoute ? _polyLen(_walkFullCoords) : 0;
-    const walkDuration = walkDist > 0 ? Math.round(walkDist / WALK_SPEED_MS) : walkRoute?.duration;
+  _layerTodo = L.polyline(coords, {
+    pane: 'navPane', color, weight: w, opacity: .92,
+    lineCap: 'round', lineJoin: 'round',
+    ...(dash ? { dashArray: dash } : {}),
+  }).addTo(map);
 
-    _navDriveRemDist = driveRoute ? _polyLen(_driveFullCoords) : 0;
-    _navWalkRemDist  = walkDist;
+  _layerDone = null;
+}
 
-    // ── Vykresli trasy ──
-    _drawRoute();
+function _redrawProgress(doneCoords, todoCoords) {
+  const mode  = _navMode;
+  const color = mode === 'driving' ? '#3b82f6' : '#10b981';
+  const w     = mode === 'driving' ? 5 : 3;
+  const dash  = mode === 'walking' ? '7,5' : undefined;
 
-    // ── Marker cíle ──
-    _navDestMarker = L.marker([targetLat, targetLng], {
-      icon: L.divIcon({
-        html: `<div style="
-          width:22px;height:22px;background:#f97316;border:3px solid #fff;
-          border-radius:50%;box-shadow:0 0 14px #f97316aa;
-          display:flex;align-items:center;justify-content:center;font-size:.7rem;">🎯</div>`,
-        className: '', iconSize: [22,22], iconAnchor: [11,11],
-      }),
-      pane: 'navPane',
-      zIndexOffset: 500,
-    }).addTo(map)
-      .bindPopup(`<div style="padding:6px 10px;font-size:.75rem;font-family:DM Sans,sans-serif">
-        🎯 <strong>${targetName || 'Cíl'}</strong></div>`);
+  if (_layerDone) try{ map.removeLayer(_layerDone); }catch(e){}
+  if (_layerTodo) try{ map.removeLayer(_layerTodo); }catch(e){}
+  if (_layerShadow) try{ map.removeLayer(_layerShadow); }catch(e){}
 
-    // ── Widget ──
-    _showNavWidget({
-      name:          targetName,
-      driveDuration: driveRoute?.duration,
-      driveDistance: driveRoute?.distance,
-      walkDuration,
-    });
+  if (doneCoords.length > 1) {
+    _layerDone = L.polyline(doneCoords, {
+      pane: 'navPane', color: '#475569', weight: w, opacity: .45,
+      lineCap: 'round', lineJoin: 'round',
+    }).addTo(map);
+  }
+  if (todoCoords.length > 1) {
+    _layerShadow = L.polyline(todoCoords, {
+      pane: 'navPane', color: mode === 'driving' ? '#1e40af' : '#065f46',
+      weight: w + 4, opacity: .2, lineCap: 'round', lineJoin: 'round',
+    }).addTo(map);
 
-    // ── Fit bounds ──
-    try {
-      const allCoords = [..._driveFullCoords, ..._walkFullCoords];
-      if (allCoords.length) map.fitBounds(L.latLngBounds(allCoords).pad(.12));
-    } catch(e) {}
-
-    // ── Spusť live tracking ──
-    _startTracking(targetLat, targetLng, targetName);
-
-    document.getElementById('fab-nav')?.classList.add('on');
-    _navActive = true;
-    badge('✅ Trasa načtena — navigace spuštěna');
-
-  } catch(err) {
-    console.error('nav.js:', err);
-    badge('❌ Chyba trasy');
+    _layerTodo = L.polyline(todoCoords, {
+      pane: 'navPane', color, weight: w, opacity: .92,
+      lineCap: 'round', lineJoin: 'round',
+      ...(dash ? { dashArray: dash } : {}),
+    }).addTo(map);
   }
 }
 
-// ── VYKRESLENÍ TRASY ─────────────────────────────────────────────
-function _drawRoute() {
-  // Smaž staré vrstvy
-  [_driveShadow, _driveLayerDone, _driveLayerTodo, _walkLayerDone, _walkLayerTodo].forEach(l => {
-    if (l) { try { map.removeLayer(l); } catch(e){} }
+// ════════════════════════════════════════════════════════════════
+//  WIDGET
+// ════════════════════════════════════════════════════════════════
+function _showNavWidget(mode, name, durSec, distM) {
+  document.getElementById('nav-mode-ico').textContent  = mode === 'driving' ? '🚗' : '🚶';
+  document.getElementById('nav-dest-name').textContent = name || 'Cíl';
+  document.getElementById('nav-active-time').textContent = _fmtDur(durSec);
+  document.getElementById('nav-dist').textContent      = distM ? _fmtDist(distM) : '';
+  document.getElementById('nav-widget').classList.add('on');
+}
+
+function _updateWidget(remSec, remDist) {
+  const tv = document.getElementById('nav-active-time');
+  if (tv) tv.textContent = remSec > 0 ? _fmtDur(remSec) : '✓';
+  const dv = document.getElementById('nav-dist');
+  if (dv) dv.textContent = remDist > 0 ? `${_fmtDist(remDist)} zbývá` : 'V cíli';
+}
+
+// ════════════════════════════════════════════════════════════════
+//  FOLLOW MODE + HEADING
+// ════════════════════════════════════════════════════════════════
+function _setFollow(on) {
+  _followMode = on;
+  _mapMoved   = false;
+  const btn   = document.getElementById('nav-follow-btn');
+  const rc    = document.getElementById('nav-recenter-btn');
+  const rc2   = document.getElementById('nav-recenter-btn2');
+  if (btn) btn.classList.toggle('follow-on', on);
+  if (rc)  rc.classList.toggle('on', !on);
+  if (rc2) rc2.classList.toggle('on', !on);
+  if (on) {
+    // Ihned vycentruj
+    const pos = (typeof getGeoLatLng === 'function') ? getGeoLatLng() : null;
+    if (pos) map.setView(pos, Math.max(map.getZoom(), 16));
+  }
+}
+
+function toggleNavFollow() { _setFollow(!_followMode); }
+
+function navRecenter() {
+  _setFollow(true);
+}
+
+function _onMapDrag() {
+  if (!_navActive) return;
+  if (_followMode) {
+    _followMode = false;
+    _mapMoved   = true;
+    const btn  = document.getElementById('nav-follow-btn');
+    if (btn) btn.classList.remove('follow-on');
+    document.getElementById('nav-recenter-btn')?.classList.add('on');
+    document.getElementById('nav-recenter-btn2')?.classList.add('on');
+  }
+}
+
+// ── Heading marker (šipka směru jízdy) ───────────────────────────
+// Použijeme SVG šipku rotovanou podle heading
+function _buildHeadingIcon(heading, mode) {
+  const color = mode === 'driving' ? '#3b82f6' : '#10b981';
+  const deg   = (heading ?? 0);
+  return L.divIcon({
+    html: `<div style="
+      width:20px;height:20px;
+      display:flex;align-items:center;justify-content:center;
+      transform: rotate(${deg}deg);
+      filter: drop-shadow(0 0 4px ${color}aa);
+    ">
+      <svg viewBox="0 0 20 20" width="20" height="20">
+        <polygon points="10,1 16,17 10,13 4,17" fill="${color}" stroke="#fff" stroke-width="1.5"/>
+      </svg>
+    </div>`,
+    className: '', iconSize: [20,20], iconAnchor: [10,10],
   });
+}
 
-  // Shadow (glow) pro auto trasu
-  if (_driveFullCoords.length) {
-    _driveShadow = L.polyline(_driveFullCoords, {
-      pane: 'navPane', color: '#1e40af', weight: 9, opacity: .2,
-      lineCap: 'round', lineJoin: 'round',
-    }).addTo(map);
-  }
-
-  // Projeto (šedé) — viditelné jen pokud tracker vytvořil "done" část
-  _driveLayerDone = null;
-  _walkLayerDone  = null;
-
-  // Zbývá auto (modrá)
-  if (_driveFullCoords.length) {
-    _driveLayerTodo = L.polyline(_driveFullCoords, {
-      pane: 'navPane', color: '#3b82f6', weight: 5, opacity: .92,
-      lineCap: 'round', lineJoin: 'round',
-    }).addTo(map);
-  }
-
-  // Zbývá pěšky (zelená tečkovaná) — jen pokud výrazně kratší
-  const driveLen = _polyLen(_driveFullCoords);
-  const walkLen  = _polyLen(_walkFullCoords);
-  if (_walkFullCoords.length && (!driveLen || walkLen < driveLen * 0.75)) {
-    _walkLayerTodo = L.polyline(_walkFullCoords, {
-      pane: 'navPane', color: '#10b981', weight: 3, opacity: .75,
-      dashArray: '7,5', lineCap: 'round',
-    }).addTo(map);
+function _updatePosMarker(lat, lng, heading) {
+  const ico = _buildHeadingIcon(heading, _navMode);
+  if (!_posMarker) {
+    _posMarker = L.marker([lat, lng], { icon: ico, pane: 'navPane', zIndexOffset: 900 })
+      .addTo(map);
+  } else {
+    _posMarker.setLatLng([lat, lng]);
+    _posMarker.setIcon(ico);
   }
 }
 
-// ── LIVE TRACKING ────────────────────────────────────────────────
-// Strategie:
-//   • watchPosition každý ~3 s (enableHighAccuracy: true)
-//   • při každé aktualizaci: najdi nejbližší bod na trase,
-//     vyrenderuj "projeto" šedě, "zbývá" barevně
-//   • aktualizuj zbývající vzdálenost a čas v widgetu
-//   • polohu marker přesuň na novou GPS pozici
-//   • při přiblížení na ≤ 25 m od cíle — oznámení + zastaví tracking
-
-const _TRACK_INTERVAL_MS = 3000;  // ms — watchPosition min interval hint
-const _ARRIVE_THRESHOLD  = 25;    // m — "cíl dosažen"
-
-let _trackTarget = null;   // { lat, lng, name }
-
+// ════════════════════════════════════════════════════════════════
+//  GPS TRACKING
+// ════════════════════════════════════════════════════════════════
 function _startTracking(tLat, tLng, tName) {
   _stopTracking();
   _trackTarget = { lat: tLat, lng: tLng, name: tName };
-
   if (!navigator.geolocation) return;
-
-  _watchId = navigator.geolocation.watchPosition(
-    pos => _onTrackUpdate(pos),
-    err => console.warn('nav tracking geo err:', err.message),
-    {
-      enableHighAccuracy: true,
-      maximumAge:         _TRACK_INTERVAL_MS,
-      timeout:            10000,
-    }
+  _trackWatchId = navigator.geolocation.watchPosition(
+    pos => _onTrack(pos),
+    err => console.warn('nav track:', err.message),
+    { enableHighAccuracy: true, maximumAge: 0, timeout: 12000 }
   );
 }
 
 function _stopTracking() {
-  if (_watchId !== null) {
-    navigator.geolocation.clearWatch(_watchId);
-    _watchId = null;
-  }
+  if (_trackWatchId !== null) { navigator.geolocation.clearWatch(_trackWatchId); _trackWatchId = null; }
   _trackTarget = null;
 }
 
-function _onTrackUpdate(pos) {
+function _onTrack(pos) {
   if (!_navActive) return;
-  const lat = pos.coords.latitude;
-  const lng = pos.coords.longitude;
-  _lastPos  = { lat, lng };
+  const lat     = pos.coords.latitude;
+  const lng     = pos.coords.longitude;
+  const heading = pos.coords.heading;   // null pokud nedostupný
+  _lastHeading  = heading;
 
-  // ── Aktualizuj polohu marker ──
-  _updatePosMarker(lat, lng, pos.coords.accuracy);
+  _updatePosMarker(lat, lng, heading);
 
-  // ── Zkontroluj cíl ──
+  // Follow: centruj mapu
+  if (_followMode) {
+    map.setView([lat, lng], Math.max(map.getZoom(), 16), { animate: true, duration: 0.5 });
+  }
+
+  // Cíl dosažen?
   if (_trackTarget) {
-    const distToDest = _haversine([lat, lng], [_trackTarget.lat, _trackTarget.lng]);
-    if (distToDest <= _ARRIVE_THRESHOLD) {
+    const d = _haversine([lat, lng], [_trackTarget.lat, _trackTarget.lng]);
+    if (d <= ARRIVE_M) {
       badge(`🎉 Cíl dosažen: ${_trackTarget.name || 'Cíl'}`);
       _stopTracking();
       return;
     }
   }
 
-  // ── Trim auto trasy ──
-  if (_driveFullCoords.length > 1) {
-    const { idx, trimmedCoords } = _trimRoute(_driveFullCoords, lat, lng);
-    const doneCoords = _driveFullCoords.slice(0, idx + 1);
-    const todoCoords = trimmedCoords;
+  // Trim trasy
+  if (_activeFullCoords.length > 1) {
+    const { idx, trimmed } = _trimRoute(_activeFullCoords, lat, lng);
+    const done = _activeFullCoords.slice(0, idx + 1);
 
-    // Redraw "done" (šedá)
-    if (_driveLayerDone) { try { map.removeLayer(_driveLayerDone); } catch(e){} }
-    if (doneCoords.length > 1) {
-      _driveLayerDone = L.polyline(doneCoords, {
-        pane: 'navPane', color: '#475569', weight: 5, opacity: .5,
-        lineCap: 'round', lineJoin: 'round',
-      }).addTo(map);
-    }
+    _redrawProgress(done, trimmed);
 
-    // Redraw "todo" (modrá)
-    if (_driveLayerTodo) { try { map.removeLayer(_driveLayerTodo); } catch(e){} }
-    if (todoCoords.length > 1) {
-      _driveLayerTodo = L.polyline(todoCoords, {
-        pane: 'navPane', color: '#3b82f6', weight: 5, opacity: .92,
-        lineCap: 'round', lineJoin: 'round',
-      }).addTo(map);
-    }
-
-    // Shadow update (jen "todo")
-    if (_driveShadow) { try { map.removeLayer(_driveShadow); } catch(e){} }
-    if (todoCoords.length > 1) {
-      _driveShadow = L.polyline(todoCoords, {
-        pane: 'navPane', color: '#1e40af', weight: 9, opacity: .2,
-        lineCap: 'round', lineJoin: 'round',
-      }).addTo(map);
-    }
-
-    // Zbývající vzdálenost + čas auto
-    _navDriveRemDist = _polyLen(todoCoords);
-    const driveRemTime = _navDriveRemDist > 0
-      ? Math.round(_navDriveRemDist / (driveRoute_avgSpeed() || 13.9)) // fallback 50 km/h
-      : 0;
-    _updateWidgetTimes(driveRemTime, null);
-  }
-
-  // ── Trim pěší trasy ──
-  if (_walkFullCoords.length > 1) {
-    const { idx: wi, trimmedCoords: wTodo } = _trimRoute(_walkFullCoords, lat, lng);
-    const wDone = _walkFullCoords.slice(0, wi + 1);
-
-    if (_walkLayerDone) { try { map.removeLayer(_walkLayerDone); } catch(e){} }
-    if (wDone.length > 1) {
-      _walkLayerDone = L.polyline(wDone, {
-        pane: 'navPane', color: '#475569', weight: 3, opacity: .4,
-        lineCap: 'round', lineJoin: 'round',
-      }).addTo(map);
-    }
-    if (_walkLayerTodo) { try { map.removeLayer(_walkLayerTodo); } catch(e){} }
-    if (wTodo.length > 1) {
-      _walkLayerTodo = L.polyline(wTodo, {
-        pane: 'navPane', color: '#10b981', weight: 3, opacity: .75,
-        dashArray: '7,5', lineCap: 'round',
-      }).addTo(map);
-    }
-
-    // Zbývající čas pěšky (reálná rychlost 4.5 km/h)
-    _navWalkRemDist = _polyLen(wTodo);
-    const walkRemTime = _navWalkRemDist > 0
-      ? Math.round(_navWalkRemDist / WALK_SPEED_MS)
-      : 0;
-    _updateWidgetTimes(null, walkRemTime);
+    // Přepočet zbývající vzdálenosti + času
+    const remDist = _polyLen(trimmed);
+    const remSec  = _navMode === 'driving'
+      ? Math.round(remDist / (_avgSpeedMS || 13.9))
+      : Math.round(remDist / WALK_SPEED_MS);
+    _remDist = remDist;
+    _updateWidget(remSec, remDist);
   }
 }
 
-// Odhadovaná průměrná rychlost auta z původní trasy (m/s)
-// Používáme jen jako fallback pokud nemáme přímý přístup k route duration
-let _driveAvgSpeedMS = 13.9; // 50 km/h default
-function driveRoute_avgSpeed() { return _driveAvgSpeedMS; }
-
-// Aktualizuje jen příslušné hodnoty v widgetu (null = nemeň)
-function _updateWidgetTimes(driveSec, walkSec) {
-  if (driveSec !== null) {
-    const el = document.getElementById('nav-drive-time');
-    if (el) el.textContent = driveSec > 0 ? _fmtDur(driveSec) : '✓';
-  }
-  if (walkSec !== null) {
-    const el = document.getElementById('nav-walk-time');
-    if (el) el.textContent = walkSec > 0 ? _fmtDur(walkSec) : '✓';
-  }
-  const distEl = document.getElementById('nav-dist');
-  if (distEl) {
-    const remD = _navDriveRemDist || _navWalkRemDist;
-    if (remD > 0) distEl.textContent = _fmtDist(remD) + ' zbývá';
-    else          distEl.textContent = 'V cíli';
-  }
-}
-
-// ── POLOHA MARKER ────────────────────────────────────────────────
-function _updatePosMarker(lat, lng, acc) {
-  if (!_navPosMarker) {
-    const ico = L.divIcon({
-      html: `<div style="width:14px;height:14px;background:#3b82f6;border:3px solid #fff;
-               border-radius:50%;box-shadow:0 0 10px #3b82f6aa"></div>`,
-      className: '', iconSize: [14,14], iconAnchor: [7,7],
-    });
-    _navPosMarker = L.marker([lat, lng], { icon: ico, pane: 'navPane', zIndexOffset: 800 })
-      .addTo(map)
-      .bindPopup(`<div style="padding:6px 10px;font-size:.72rem">📍 Moje poloha<br>
-        <span style="color:var(--muted);font-size:.64rem">±${Math.round(acc)} m</span></div>`);
-  } else {
-    _navPosMarker.setLatLng([lat, lng]);
-  }
-}
-
-// ── WIDGET ───────────────────────────────────────────────────────
-function _showNavWidget({ name, driveDuration, driveDistance, walkDuration }) {
-  document.getElementById('nav-dest-name').textContent  = name || 'Cíl';
-  document.getElementById('nav-drive-time').textContent = driveDuration ? _fmtDur(driveDuration) : '–';
-  document.getElementById('nav-walk-time').textContent  = walkDuration  ? _fmtDur(walkDuration)  : '–';
-  document.getElementById('nav-dist').textContent       = driveDistance ? _fmtDist(driveDistance) : '';
-  document.getElementById('nav-widget').classList.add('on');
-
-  // Ulož průměrnou rychlost auta pro live tracking
-  if (driveDuration && driveDistance) {
-    _driveAvgSpeedMS = driveDistance / driveDuration; // m/s
-  }
-}
-
-// ── CLEAR ────────────────────────────────────────────────────────
+// ════════════════════════════════════════════════════════════════
+//  CLEAR
+// ════════════════════════════════════════════════════════════════
 function clearNav() {
   _stopTracking();
-  _navActive = false;
+  _navActive    = false;
+  _followMode   = false;
+  _navMode      = null;
+  _fetchedDriveRoute = _fetchedWalkRoute = _fetchedTarget = null;
 
-  [_driveShadow, _driveLayerDone, _driveLayerTodo,
-   _walkLayerDone, _walkLayerTodo, _navDestMarker, _navPosMarker].forEach(l => {
+  [_layerShadow, _layerDone, _layerTodo, _destMarker, _posMarker].forEach(l => {
     if (l) { try { map.removeLayer(l); } catch(e){} }
   });
-  _driveShadow = _driveLayerDone = _driveLayerTodo = null;
-  _walkLayerDone = _walkLayerTodo = null;
-  _navDestMarker = _navPosMarker = null;
-  _driveFullCoords = []; _walkFullCoords = [];
-  _navDriveRemDist = _navWalkRemDist = 0;
+  _layerShadow = _layerDone = _layerTodo = null;
+  _destMarker  = _posMarker = null;
+  _driveFullCoords = []; _walkFullCoords = []; _activeFullCoords = [];
+  _remDist = 0;
+
+  map.off('dragstart', _onMapDrag);
 
   _removePick();
   _navPickActive = false;
@@ -519,21 +607,14 @@ function clearNav() {
   document.getElementById('nav-widget')?.classList.remove('on');
   document.getElementById('fab-nav')?.classList.remove('on');
   document.getElementById('nav-confirm')?.classList.remove('on');
+  document.getElementById('nav-mode-picker')?.classList.remove('on');
+  document.getElementById('nav-recenter-btn')?.classList.remove('on');
+  document.getElementById('nav-recenter-btn2')?.classList.remove('on');
   document.getElementById('nav-pick-btn')?.classList.remove('pick-active');
+  document.getElementById('nav-follow-btn')?.classList.remove('follow-on');
+  document.body.classList.remove('nav-on');
+
   const lbl = document.getElementById('nav-pick-lbl');
   if (lbl) lbl.textContent = 'Vybrat cíl na mapě';
   _pendingLat = _pendingLng = _pendingName = null;
-}
-
-// ── FORMÁTOVÁNÍ ──────────────────────────────────────────────────
-function _fmtDur(sec) {
-  if (!sec || sec < 0) return '–';
-  const h = Math.floor(sec / 3600);
-  const m = Math.ceil((sec % 3600) / 60);
-  return h > 0 ? `${h} h ${m} min` : `${m} min`;
-}
-
-function _fmtDist(m) {
-  if (!m) return '';
-  return m < 1000 ? `${Math.round(m)} m` : `${(m / 1000).toFixed(1)} km`;
 }

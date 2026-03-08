@@ -181,7 +181,7 @@ header {
 }
 .sb-lbl  {
   font-size: .6rem; letter-spacing: 1.5px; text-transform: uppercase;
-  color: var(--muted); margin-bottom: 6px; text-align: left; display: block;
+  color: var(--muted); margin-bottom: 6px; text-align: center; display: block;
 }
 .sb-search { position: relative; }
 .sb-search input {
@@ -382,7 +382,7 @@ header {
 .ppop-btn.nav:hover { background: var(--acc3); border-color: var(--acc3); color: #fff; }
 
 /* ════════════════════════════════════════════════════════════════
-   NAVIGAČNÍ WIDGET
+   NAVIGAČNÍ WIDGET (aktivní trasa)
    ════════════════════════════════════════════════════════════════ */
 #nav-widget {
   display: none;
@@ -390,27 +390,129 @@ header {
   z-index: 950; background: var(--surface);
   border: 1px solid var(--acc3);
   border-radius: var(--r); padding: 10px 12px 8px;
-  min-width: 200px; box-shadow: var(--sh);
-  animation: slideIn .2s ease;
+  min-width: 210px; box-shadow: var(--sh);
+  animation: slideIn .22s ease;
 }
 #nav-widget.on { display: block; }
+/* dbadge skrytý při aktivní navigaci */
+body.nav-on #dbadge { display: none !important; }
+
 @keyframes slideIn { from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)} }
 
 .nav-head {
-  display: flex; align-items: center; gap: 6px; margin-bottom: 8px;
+  display: flex; align-items: center; gap: 6px; margin-bottom: 7px;
 }
-.nav-icon { font-size: 1rem; }
-.nav-dest-name { flex: 1; font-family: 'Syne', sans-serif; font-weight: 700; font-size: .82rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--acc3); }
-.nav-close { width: 20px; height: 20px; border-radius: 4px; border: 1px solid var(--border); background: var(--surf2); color: var(--muted); cursor: pointer; font-size: .7rem; display: flex; align-items: center; justify-content: center; transition: all .14s; flex-shrink: 0; }
+.nav-mode-ico { font-size: 1rem; flex-shrink: 0; }
+.nav-dest-name { flex: 1; font-family: 'Syne', sans-serif; font-weight: 700; font-size: .82rem;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--acc3); }
+.nav-close {
+  width: 20px; height: 20px; border-radius: 4px;
+  border: 1px solid var(--border); background: var(--surf2);
+  color: var(--muted); cursor: pointer; font-size: .7rem;
+  display: flex; align-items: center; justify-content: center;
+  transition: all .14s; flex-shrink: 0;
+}
 .nav-close:hover { background: var(--orange); border-color: var(--orange); color: #fff; }
 
-.nav-times { display: flex; align-items: center; gap: 10px; margin-bottom: 5px; }
-.nav-time  { display: flex; align-items: center; gap: 5px; }
-.nav-time-ico { font-size: .85rem; }
-.nav-time-val { font-family: 'Syne', sans-serif; font-size: .88rem; font-weight: 700; color: var(--text); }
-.nav-time-lbl { font-size: .6rem; color: var(--muted); }
-.nav-sep { width: 1px; height: 28px; background: var(--border); }
-.nav-dist { font-size: .65rem; color: var(--dim); text-align: right; }
+.nav-main-row {
+  display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px;
+}
+.nav-time-val {
+  font-family: 'Syne', sans-serif; font-size: 1.3rem; font-weight: 800; color: var(--text);
+}
+.nav-dist { font-size: .7rem; color: var(--muted); }
+
+.nav-actions { display: flex; gap: 5px; }
+.nav-act-btn {
+  flex: 1; padding: 4px 6px; border-radius: 7px;
+  border: 1px solid var(--border); background: var(--surf2);
+  color: var(--muted); font-family: inherit; font-size: .68rem;
+  cursor: pointer; transition: all .15s; white-space: nowrap;
+  display: flex; align-items: center; justify-content: center; gap: 3px;
+}
+.nav-act-btn:hover  { border-color: var(--acc3); color: var(--acc3); }
+.nav-act-btn.follow-on { background: rgba(14,165,233,.15); border-color: var(--acc3); color: var(--acc3); }
+/* Recenter btn uvnitř widgetu — skrytý dokud uživatel nepohne mapou */
+#nav-recenter-btn2 { display: none; }
+#nav-recenter-btn2.on { display: flex; }
+
+/* ════════════════════════════════════════════════════════════════
+   RECENTER BUTTON — floating, nad mapou (při pohybu v nav)
+   ════════════════════════════════════════════════════════════════ */
+#nav-recenter-btn {
+  display: none;
+  position: absolute; z-index: 960;
+  background: var(--acc3); color: #fff;
+  border: none; border-radius: 20px;
+  padding: 6px 15px; font-family: 'DM Sans', sans-serif;
+  font-size: .76rem; font-weight: 600; cursor: pointer;
+  box-shadow: 0 2px 14px rgba(14,165,233,.5);
+  animation: slideIn .18s ease;
+  transition: opacity .15s;
+}
+#nav-recenter-btn.on { display: flex; align-items: center; gap: 5px; }
+#nav-recenter-btn:hover { background: var(--accent); }
+
+/* Pozice: desktop vpravo pod widgetem, mobil nad BS */
+@media (min-width: 769px) {
+  #nav-recenter-btn { top: calc(var(--hdr) + 52px); right: 8px; }
+}
+@media (max-width: 768px) {
+  #nav-recenter-btn { bottom: calc(var(--mob-peek) + 12px); left: 50%; transform: translateX(-50%); }
+  #nav-widget { left: 8px; right: auto; top: calc(var(--hdr) + 8px); }
+}
+
+/* ════════════════════════════════════════════════════════════════
+   NAV MODE PICKER — výběr dopravy před startem
+   ════════════════════════════════════════════════════════════════ */
+#nav-mode-picker {
+  display: none; position: fixed; inset: 0;
+  z-index: 2000; background: rgba(13,17,23,.82);
+  backdrop-filter: blur(6px);
+  align-items: center; justify-content: center;
+  animation: fadeIn .18s ease;
+}
+#nav-mode-picker.on { display: flex; }
+@keyframes fadeIn { from{opacity:0}to{opacity:1} }
+
+#nmp-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 18px; padding: 22px 20px 16px;
+  width: min(340px, calc(100vw - 32px));
+  box-shadow: var(--sh); animation: slideIn .22s ease;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.nmp-title {
+  font-family: 'Syne', sans-serif; font-weight: 800; font-size: 1rem;
+  text-align: center; color: var(--text);
+}
+.nmp-dest {
+  font-size: .75rem; color: var(--acc3); text-align: center;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  padding: 0 8px;
+}
+.nmp-opts { display: flex; gap: 10px; }
+.nmp-opt {
+  flex: 1; display: flex; flex-direction: column; align-items: center;
+  gap: 5px; padding: 16px 10px 14px;
+  border-radius: 14px; border: 2px solid var(--border);
+  background: var(--surf2); cursor: pointer; transition: all .18s;
+  font-family: inherit;
+}
+.nmp-opt:hover { border-color: var(--acc3); background: rgba(14,165,233,.08); }
+.nmp-opt:active { transform: scale(.97); }
+.nmp-ico  { font-size: 2rem; }
+.nmp-lbl  { font-family: 'Syne', sans-serif; font-weight: 700; font-size: .85rem; color: var(--text); }
+.nmp-time { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 1.1rem; color: var(--acc3); min-height: 1.4em; }
+.nmp-sub  { font-size: .68rem; color: var(--muted); min-height: 1em; }
+/* Loading skeleton pro časy */
+.nmp-time.loading { color: var(--dim); animation: blink 1s ease-in-out infinite; }
+.nmp-cancel {
+  background: none; border: 1px solid var(--border); color: var(--muted);
+  border-radius: 8px; padding: 7px; font-family: inherit; font-size: .75rem;
+  cursor: pointer; transition: all .14s; width: 100%;
+}
+.nmp-cancel:hover { border-color: var(--orange); color: var(--orange); }
 
 /* ════════════════════════════════════════════════════════════════
    LIGHTBOX
@@ -428,7 +530,7 @@ header {
    FAB TLAČÍTKA
    ════════════════════════════════════════════════════════════════ */
 #fab-col {
-  position: absolute; right: 12px; bottom: 97px;
+  position: absolute; right: 12px; bottom: 94px;
   z-index: 900; display: flex; flex-direction: column; gap: 6px; align-items: center;
 }
 .fab {
@@ -717,6 +819,8 @@ header {
 #nav-pick-btn.on {
   display: flex;
 }
+/* Nav-pick-btn skrytý při aktivní trase */
+body.nav-on #nav-pick-btn { display: none !important; }
 #nav-pick-btn.pick-active {
   background: var(--acc3); color: #fff;
   border-color: var(--acc3);
