@@ -421,7 +421,7 @@ header {
    FAB TLAČÍTKA
    ════════════════════════════════════════════════════════════════ */
 #fab-col {
-  position: absolute; right: 12px; bottom: 94px;
+  position: absolute; right: 12px; bottom: 100px;
   z-index: 900; display: flex; flex-direction: column; gap: 6px; align-items: center;
 }
 .fab {
