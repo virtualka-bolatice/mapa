@@ -167,6 +167,24 @@
 <div id="sb-handle" class="desk-only" onclick="toggleSB()">◀</div>
 <div id="dbadge">⏳ Načítám…</div>
 
+<!-- ══ NAV — výběr cíle + potvrzení ════════════════════════════ -->
+<!-- Tlačítko se zobrazí po aktivaci geolokace -->
+<button id="nav-pick-btn" onclick="toggleNavPick()">
+  🎯 <span id="nav-pick-lbl">Vybrat cíl na mapě</span>
+</button>
+
+<!-- Potvrzovací bar po kliknutí na cíl v mapě -->
+<div id="nav-confirm">
+  <div>
+    <div class="nc-label">Navigovat do</div>
+    <div class="nc-dest" id="nc-dest-name">…</div>
+  </div>
+  <div class="nc-btns">
+    <button class="nc-btn nc-btn-ok"  onclick="confirmNav()">🧭 Navigovat</button>
+    <button class="nc-btn nc-btn-no"  onclick="cancelNavPick()">✕</button>
+  </div>
+</div>
+
 <!-- ══ FAB SLOUPEC ═══════════════════════════════════════════════
      Desktop: nad zoom kontrolou (bottom-right)
      Mobil:   nad peek pruhem bottom sheetu

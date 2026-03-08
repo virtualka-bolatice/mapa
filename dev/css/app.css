@@ -26,7 +26,7 @@
   --r:  10px;
   --sh: 0 4px 24px rgba(0,0,0,.65);
   --sh2: 0 2px 10px rgba(0,0,0,.4);
-  --mob-peek: 92px;   /* výška peek části mobilního bottom sheetu */
+  --mob-peek: 105px;  /* výška peek části mobilního bottom sheetu */
   --hdr: 50px;        /* výška headeru */
 }
 
@@ -553,30 +553,20 @@ header {
   #map { position: absolute; inset: 0; top: var(--hdr); }
   #app { height: 100vh; }
 
-  /* ── SIDEBAR → BOTTOM SHEET ── */
+  /* ── SIDEBAR → BOTTOM SHEET — transform řídí JS ── */
   #sidebar {
-    /* Reset desktop styles */
     top: auto !important;
-    left: 0 !important;
-    right: 0 !important;
-    bottom: 0 !important;
+    left: 0 !important; right: 0 !important; bottom: 0 !important;
     width: 100% !important;
     border-right: none !important;
     border-top: 1px solid var(--border);
     border-radius: 18px 18px 0 0;
-    /* Peek: zobraz pouze var(--mob-peek) */
-    transform: translateY(calc(100% - var(--mob-peek))) !important;
-    transition: transform .3s cubic-bezier(.4,0,.2,1) !important;
     max-height: 65vh;
     overflow: hidden;
+    will-change: transform;
+    /* JS nastavuje inline transform — žádný CSS default zde */
   }
-  #sidebar.bs-expanded {
-    transform: translateY(0) !important;
-  }
-  #sidebar.closed {
-    /* Na mobilu closed = úplně schovaný */
-    transform: translateY(100%) !important;
-  }
+  #sidebar.closed { transition: transform .32s cubic-bezier(.4,0,.2,1) !important; transform: translateY(110%) !important; }
 
   /* Mobilní drag handle */
   #mob-bs-top {
@@ -632,8 +622,8 @@ header {
   /* FABs nad bottom sheet */
   #fab-col { bottom: calc(var(--mob-peek) + 12px); right: 10px; }
 
-  /* Měřicí panel nad BS */
-  #msr-panel { bottom: calc(var(--mob-peek) + 10px); }
+  /* Měřicí panel — výrazně výše nad POI countery */
+  #msr-panel { bottom: calc(var(--mob-peek) + 54px); left: 10px !important; right: 10px !important; transform: none !important; width: auto !important; }
 
   /* Stats/POI overview nad BS */
   #stats-panel, #poi-overview {
@@ -643,8 +633,20 @@ header {
   /* Zoom controls — skryté na mobilu (zoom prsty) */
   .leaflet-control-zoom { display: none !important; }
 
-  /* Scale vlevo (bez sidebar offsetu) */
-  .leaflet-bottom.leaflet-left { margin-left: 0 !important; }
+  /* Scale — nad BS peekem, vlevo, jemné */
+  .leaflet-bottom.leaflet-left {
+    bottom: calc(var(--mob-peek) + 6px) !important;
+    left: 10px !important;
+    margin-left: 0 !important;
+  }
+  .leaflet-control-scale-line {
+    background: rgba(13,17,23,.72) !important;
+    border-color: var(--muted) !important;
+    color: var(--muted) !important;
+    font-size: 8px !important;
+    padding: 1px 4px !important;
+    backdrop-filter: blur(4px);
+  }
 
   /* POI overview — kompaktnější na mobilu */
   #poi-overview { font-size: .62rem; padding: 4px 8px; gap: 5px; }
@@ -657,4 +659,82 @@ header {
 @media (min-width: 769px) {
   .mob-only  { display: none !important; }
   .desk-only { display: flex !important; }
+}
+
+/* ════════════════════════════════════════════════════════════════
+   NAV PICK — tlačítko výběru cíle + potvrzovací bar
+   ════════════════════════════════════════════════════════════════ */
+
+/* Tlačítko "Vybrat cíl" — ukáže se po aktivaci geolokace */
+#nav-pick-btn {
+  display: none;
+  position: absolute; z-index: 950;
+  background: var(--surface); border: 1.5px solid var(--acc3);
+  color: var(--acc3); border-radius: 20px;
+  padding: 5px 13px 5px 9px;
+  font-family: 'DM Sans', sans-serif; font-size: .75rem; font-weight: 500;
+  cursor: pointer; gap: 5px; align-items: center;
+  box-shadow: var(--sh2); white-space: nowrap;
+  transition: all .18s; animation: slideIn .2s ease;
+}
+#nav-pick-btn.on {
+  display: flex;
+}
+#nav-pick-btn.pick-active {
+  background: var(--acc3); color: #fff;
+  border-color: var(--acc3);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%,100% { box-shadow: 0 0 0 0 rgba(14,165,233,.4); }
+  50%      { box-shadow: 0 0 0 8px rgba(14,165,233,0); }
+}
+@keyframes pick-pulse {
+  0%,100% { transform: scale(1);   box-shadow: 0 0 0 0   rgba(14,165,233,.6); }
+  50%      { transform: scale(1.2); box-shadow: 0 0 0 10px rgba(14,165,233,0); }
+}
+
+/* Potvrzovací bar */
+#nav-confirm {
+  display: none;
+  position: absolute; top: calc(var(--hdr) + 8px); left: 50%;
+  transform: translateX(-50%);
+  z-index: 1060; background: var(--surface);
+  border: 1px solid var(--acc3); border-radius: var(--r);
+  padding: 8px 12px; gap: 10px; align-items: center;
+  box-shadow: var(--sh); white-space: nowrap;
+  animation: slideIn .2s ease;
+}
+#nav-confirm.on { display: flex; }
+.nc-label { font-size: .75rem; color: var(--muted); }
+.nc-dest  { font-family: 'Syne', sans-serif; font-size: .8rem; font-weight: 700;
+            color: var(--acc3); max-width: 150px; overflow: hidden;
+            text-overflow: ellipsis; }
+.nc-btns  { display: flex; gap: 5px; }
+.nc-btn   { padding: 4px 10px; border-radius: 6px; font-family: inherit;
+            font-size: .7rem; cursor: pointer; border: 1px solid; transition: all .14s; }
+.nc-btn-ok  { background: var(--acc3); border-color: var(--acc3); color: #fff; }
+.nc-btn-ok:hover  { background: var(--accent); border-color: var(--accent); }
+.nc-btn-no  { background: var(--surf2); border-color: var(--border); color: var(--muted); }
+.nc-btn-no:hover  { border-color: var(--orange); color: var(--orange); }
+
+/* Desktop: nav-pick-btn vlevo pod widgetem */
+@media (min-width: 769px) {
+  #nav-pick-btn {
+    top: calc(var(--hdr) + 54px); right: 8px;
+  }
+  #nav-confirm {
+    top: calc(var(--hdr) + 8px);
+  }
+}
+/* Mobile: nad BS peekem, vlevo */
+@media (max-width: 768px) {
+  #nav-pick-btn {
+    bottom: calc(var(--mob-peek) + 54px); left: 10px;
+  }
+  #nav-confirm {
+    top: calc(var(--hdr) + 8px);
+    max-width: calc(100vw - 24px);
+  }
+  .nc-dest { max-width: 100px; }
 }
