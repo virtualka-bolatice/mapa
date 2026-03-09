@@ -148,6 +148,11 @@ function renderPOI() {
     m.bindPopup(buildPOIPopup(p, color, icon, lat, lng), { maxWidth: 360, minWidth: 300 });
     poiGroup.addLayer(m);
   });
+
+  // Aplikuj counter-rotaci na nové ikony (pokud je mapa otočená)
+  if (typeof _applyPoiCounterRotation === 'function') {
+    _applyPoiCounterRotation(typeof _mapBearing !== 'undefined' ? _mapBearing : 0);
+  }
 }
 
 // ── POI POPUP ────────────────────────────────────────────────────

@@ -602,11 +602,14 @@ body.nav-on #dbadge { display: none !important; }
 .fab:hover      { background: var(--surf2); color: var(--text); }
 .fab.on         { color: #fff; }
 #fab-geo.on     { background: var(--accent); border-color: var(--accent); }
+/* Geo FAB při aktivní navigaci — zešedí (navigace přebírá tracking) */
+#fab-geo.nav-taking-over { opacity: .35; pointer-events: none; }
 #fab-msr.on     { background: var(--acc2);   border-color: var(--acc2);   }
 #fab-nav        { display: none; background: rgba(14,165,233,.15); border-color: var(--acc3); color: var(--acc3); }
 #fab-nav.on     { display: flex; }
-/* North-reset button: normálně skrytý, zobrazí se gdy je mapa otočená (body.map-rotated) */
-#fab-north      { display: none; border-color: var(--acc3); color: var(--acc3); font-size: .7rem; }
+/* North-reset: normálně skrytý, zobrazí se gdy je mapa otočená */
+#fab-north        { display: none; border-color: var(--acc3); color: var(--acc3); }
+#fab-north-svg    { transition: transform 0.3s ease; }
 body.map-rotated #fab-north { display: flex; animation: fadeIn .2s ease; }
 
 /* ════════════════════════════════════════════════════════════════
@@ -887,14 +890,13 @@ body.map-rotated #fab-north { display: flex; animation: fadeIn .2s ease; }
 
 /* ════════════════════════════════════════════════════════════════
    POI IKONY — counter-rotace při rotaci mapy
-   --map-bearing je nastavena v map.js při každé rotaci mapy (rotate event).
-   Tím pádem se POI piny vždy zobrazí vzpřímeně bez ohledu na bearing mapy.
+   --map-bearing-neg je v deg (negativní bearing), nastavuje map.js JS.
+   Alternativně: JS přímo nastavuje style.transform na každém .poi-north-keep.
    Nav marker (.nav-pos-marker) counter-rotaci NEdostává — otáčí se se směrem jízdy.
    ════════════════════════════════════════════════════════════════ */
 .poi-north-keep {
   display: inline-block;
-  /* rotate(calc(...)) musí být v deg — CSS vars jsou čísla bez jednotky */
-  transform: rotate(calc(var(--map-bearing, 0) * -1deg));
+  transform: rotate(var(--map-bearing-neg, 0deg));
   transform-origin: 50% 100%; /* pivot = špička pinu */
   transition: transform 0.25s ease;
   will-change: transform;
@@ -992,3 +994,56 @@ body.nav-on #nav-pick-btn { display: none !important; }
   }
   .nc-dest { max-width: 100px; }
 }
+
+/* ════════════════════════════════════════════════════════════════
+   PŘÍJEZDOVÝ MODAL — statistiky po dosažení cíle
+   ════════════════════════════════════════════════════════════════ */
+#nav-arrived-modal {
+  display: none; position: fixed; inset: 0; z-index: 9500;
+  background: rgba(0,0,0,.55); backdrop-filter: blur(4px);
+  align-items: center; justify-content: center;
+  animation: fadeIn .25s ease;
+}
+#nav-arrived-modal.on { display: flex; }
+
+#nav-arrived-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 18px; padding: 28px 24px 22px;
+  max-width: 340px; width: calc(100vw - 32px);
+  box-shadow: 0 20px 60px rgba(0,0,0,.5);
+  text-align: center; animation: arrivedPop .35s cubic-bezier(.34,1.56,.64,1);
+}
+@keyframes arrivedPop {
+  from { opacity:0; transform: scale(.82) translateY(18px); }
+  to   { opacity:1; transform: scale(1) translateY(0); }
+}
+
+.nar-icon  { font-size: 2.8rem; margin-bottom: 6px; }
+.nar-title {
+  font-family: 'Syne', sans-serif; font-weight: 800; font-size: 1.3rem;
+  color: var(--text); margin-bottom: 4px;
+}
+.nar-dest {
+  font-size: .82rem; color: var(--muted);
+  margin-bottom: 22px; max-width: 260px; margin-left: auto; margin-right: auto;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.nar-stats {
+  display: flex; align-items: center; justify-content: center;
+  gap: 0; margin-bottom: 22px;
+  background: var(--surf2); border-radius: 12px; padding: 14px 10px;
+}
+.nar-stat { flex: 1; text-align: center; }
+.nar-stat-val {
+  font-family: 'Syne', sans-serif; font-weight: 700; font-size: 1.05rem;
+  color: var(--text); margin-bottom: 3px;
+}
+.nar-stat-lbl { font-size: .65rem; color: var(--muted); text-transform: uppercase; letter-spacing: .8px; }
+.nar-sep { width: 1px; height: 36px; background: var(--border); flex-shrink: 0; }
+.nar-close {
+  width: 100%; padding: 12px;
+  background: var(--accent); color: #fff; border: none; border-radius: 10px;
+  font-family: 'DM Sans', sans-serif; font-size: .88rem; font-weight: 500;
+  cursor: pointer; transition: all .18s;
+}
+.nar-close:hover { background: #2563eb; }

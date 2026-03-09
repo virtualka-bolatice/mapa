@@ -56,18 +56,29 @@ map.createPane('navPane');
 map.getPane('navPane').style.zIndex = '450';
 map.getPane('navPane').style.pointerEvents = 'none'; // kliknutí prochází přes trasu
 
-// ── CSS proměnná --map-bearing pro counter-rotaci POI ikon ───────
-// Aktualizuje se při každé rotaci mapy (2 prsty / Shift+drag / setBearing)
-// Hodnota je číslo bez jednotky — CSS: calc(var(--map-bearing, 0) * -1deg)
-function _onMapRotate() {
-  const b = (typeof map.getBearing === 'function') ? (map.getBearing() || 0) : 0;
-  document.documentElement.style.setProperty('--map-bearing', b);
+// ── CSS proměnná + přímé DOM counter-rotace POI ikon ────────────
+// CSS calc(var * unit) nefunguje → rotujeme JS přímým stylem
+// map.js volá _applyPoiCounterRotation() při každé rotaci mapy
+let _mapBearing = 0;
+
+function _applyPoiCounterRotation(bearing) {
+  _mapBearing = bearing || 0;
+  const deg   = -_mapBearing;
+  const tfm   = `rotate(${deg}deg)`;
+  // Aktualizuj všechny existující POI ikony
+  document.querySelectorAll('.poi-north-keep').forEach(el => {
+    el.style.transform = tfm;
+  });
+  // Aktualizuj CSS proměnnou pro nové ikony (přes CSS přímou hodnotu)
+  document.documentElement.style.setProperty('--map-bearing-neg', deg + 'deg');
 }
+
 // Inicializace na 0
-document.documentElement.style.setProperty('--map-bearing', 0);
+_applyPoiCounterRotation(0);
+
 if (_rotatePlugin) {
-  map.on('rotate',    _onMapRotate);
-  map.on('rotateend', _onMapRotate);
+  map.on('rotate',    () => _applyPoiCounterRotation((typeof map.getBearing==='function') ? map.getBearing() : 0));
+  map.on('rotateend', () => _applyPoiCounterRotation((typeof map.getBearing==='function') ? map.getBearing() : 0));
 }
 
 // ── PODKLADOVÉ MAPY ──────────────────────────────────────────────

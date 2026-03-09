@@ -48,7 +48,7 @@
       </svg>
       Sledovat
     </button>
-    <button class="nav-act-btn nav-act-compass" id="nav-persp-btn" onclick="toggleCompassMode()" title="Kompas — mapa se otáčí ve směru jízdy">
+    <button class="nav-act-btn nav-act-compass" id="nav-persp-btn" onclick="resetMapBearing()" title="Resetovat na sever">
       <svg id="nav-compass-svg" width="16" height="16" viewBox="0 0 24 24" fill="none">
         <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.5"/>
         <polygon points="12,3 14.5,12 12,10 9.5,12" fill="#ef4444"/>
@@ -238,9 +238,43 @@
      Mobil:   nad peek pruhem bottom sheetu
 ════════════════════════════════════════════════════════════════ -->
 <div id="fab-col">
-  <button class="fab" id="fab-msr" title="Měření"       onclick="toggleMsr()">📏</button>
-  <button class="fab" id="fab-geo" title="Moje poloha"  onclick="geolocate()">📍</button>
-  <button class="fab" id="fab-nav" title="Zrušit trasu" onclick="clearNav()">🧭</button>
+  <button class="fab" id="fab-north" title="Srovnat na sever" onclick="resetMapBearing()">
+    <svg id="fab-north-svg" width="18" height="18" viewBox="0 0 24 24" fill="none">
+      <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.5"/>
+      <polygon points="12,3 14.5,12 12,10 9.5,12" fill="#ef4444"/>
+      <polygon points="12,21 14.5,12 12,14 9.5,12" fill="currentColor" opacity=".4"/>
+      <circle cx="12" cy="12" r="1.5" fill="currentColor"/>
+    </svg>
+  </button>
+  <button class="fab" id="fab-msr"   title="Měření"          onclick="toggleMsr()">📏</button>
+  <button class="fab" id="fab-geo"   title="Moje poloha"     onclick="geolocate()">📍</button>
+  <button class="fab" id="fab-nav"   title="Zrušit trasu"    onclick="clearNav()">✕</button>
+</div>
+
+<!-- ══ PŘÍJEZDOVÁ STATISTIKA (modal při dosažení cíle) ══════════ -->
+<div id="nav-arrived-modal">
+  <div id="nav-arrived-card">
+    <div class="nar-icon">🎯</div>
+    <div class="nar-title">Cíl dosažen!</div>
+    <div class="nar-dest" id="nar-dest-name"></div>
+    <div class="nar-stats">
+      <div class="nar-stat">
+        <div class="nar-stat-val" id="nar-time">–</div>
+        <div class="nar-stat-lbl">čas jízdy</div>
+      </div>
+      <div class="nar-sep"></div>
+      <div class="nar-stat">
+        <div class="nar-stat-val" id="nar-dist">–</div>
+        <div class="nar-stat-lbl">vzdálenost</div>
+      </div>
+      <div class="nar-sep"></div>
+      <div class="nar-stat">
+        <div class="nar-stat-val" id="nar-mode">–</div>
+        <div class="nar-stat-lbl">způsob</div>
+      </div>
+    </div>
+    <button class="nar-close" onclick="closeArrivedModal()">Zavřít navigaci</button>
+  </div>
 </div>
 
 <!-- ══ MĚŘICÍ PANEL ══════════════════════════════════════════════ -->
@@ -292,15 +326,11 @@
 <!-- ══ APLIKAČNÍ JS ═════════════════════════════════════════════ -->
 <script src="js/config.js"></script>
 
-<!-- leaflet-rotate: MUSÍ být před map.js (rozšiřuje L.Map, L.Marker) -->
-<script src="https://cdn.jsdelivr.net/npm/leaflet-rotate@0.2.8/dist/leaflet-rotate-src.js"
-        onerror="console.warn('leaflet-rotate CDN nedostupné')"></script>
+<!-- leaflet-rotate: nativní rotace mapy (2 prsty / Shift+drag) — MUSÍ být před map.js -->
+<script src="https://cdn.jsdelivr.net/npm/leaflet-rotate@0.2.7/dist/leaflet-rotate.min.js"
+        onerror="console.warn('leaflet-rotate CDN nedostupné — rotace mapy vypnuta')"></script>
 
 <script src="js/map.js"></script>
-
-<!-- leaflet-moving-rotated-marker: hladké pohyby nav markeru -->
-<script src="https://cdn.jsdelivr.net/npm/leaflet-moving-rotated-marker@0.0.1/src/MovingMarker.js"
-        onerror="console.warn('leaflet-moving-rotated-marker CDN nedostupné')"></script>
 <script src="js/layers.js"></script>
 <script src="js/poi.js"></script>
 <script src="js/measure.js"></script>
