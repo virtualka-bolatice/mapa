@@ -613,6 +613,10 @@ body.nav-on #dbadge { display: none !important; }
 #fab-msr.on     { background: var(--acc2);   border-color: var(--acc2);   }
 #fab-nav        { display: none; background: rgba(14,165,233,.15); border-color: var(--acc3); color: var(--acc3); }
 #fab-nav.on     { display: flex; }
+/* North-reset: skrytý, zobrazí se když je mapa otočená */
+#fab-north        { display: none; border-color: var(--acc3); color: var(--acc3); }
+#fab-north-svg    { transition: transform 0.3s ease; }
+body.map-rotated #fab-north { display: flex; animation: fadeIn .2s ease; }
 /* North-reset: normálně skrytý, zobrazí se gdy je mapa otočená */
 
 

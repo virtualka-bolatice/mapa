@@ -704,10 +704,10 @@ function clearNav() {
   document.getElementById('nav-mode-picker')?.classList.remove('on');
   document.getElementById('nav-recenter-btn')?.classList.remove('on');
   document.getElementById('nav-recenter-btn2')?.classList.remove('on');
-  document.getElementById('nav-pick-btn')?.classList.remove('pick-active');
+  document.getElementById('nav-pick-btn')?.classList.remove('pick-active', 'on');
   document.getElementById('nav-follow-btn')?.classList.remove('follow-on');
   document.getElementById('nav-persp-btn')?.classList.remove('persp-on');
-  // Obnov "Moje poloha" tlačítko
+  // Obnov "Moje poloha" — zpusť geo znovu automaticky
   if (typeof reactivateGeoAfterNav === 'function') reactivateGeoAfterNav();
   document.body.classList.remove('nav-on');
   if (typeof map.setBearing === 'function') map.setBearing(0);

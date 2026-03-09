@@ -320,14 +320,19 @@ function deactivateGeoForNav() {
   }
 }
 
-// Obnov "Moje poloha" tlačítko po ukončení navigace
+// Obnov "Moje poloha" po ukončení navigace — automaticky znovu spusť geo
 function reactivateGeoAfterNav() {
   const btn = document.getElementById('fab-geo');
   if (btn) {
     btn.style.display = '';
     btn.classList.remove('on', 'nav-taking-over', 'geo-nav-disabled');
   }
-  // _geoLatLng zachováme — znám poslední poloha pro případ nové navigace
+  // Auto-restart sledování polohy
+  if (navigator.geolocation) {
+    _geoActive    = false;
+    _bestAccuracy = Infinity;
+    geolocate();   // zapne watchPosition a badge "Zjišťování polohy…"
+  }
 }
 
 // ════════════════════════════════════════════════════════════════
