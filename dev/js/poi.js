@@ -118,8 +118,11 @@ function renderPOI() {
     if (sc) { color = sc.color; icon = sc.icon; }
 
     const [lng, lat] = f.geometry.coordinates;
-    const m          = L.marker([lat, lng], { icon: makeIcon(icon, color) });
-    m.feature        = f;
+    const m = L.marker([lat, lng], {
+      icon:           makeIcon(icon, color),
+      rotateWithView: true,   // leaflet-rotate: PIN zůstane vzpřímený při rotaci mapy
+    });
+    m.feature = f;
     m.bindPopup(buildPOIPopup(p, color, icon, lat, lng), { maxWidth: 295 });
     poiGroup.addLayer(m);
   });
@@ -225,39 +228,72 @@ function renderMobCatIcons(counts) {
     return cc;
   })();
 
-  el.innerHTML = Object.entries(CAT_CFG).map(([k, cat]) => {
-    const isActive  = ST.catActive[k];
-    const isDimmed  = ST.filterMode && ST.filterKey !== k;
-    return `<div class="mob-cat-ico${isActive ? ' active' : ''}${isDimmed ? ' dimmed' : ''}"
-                 style="--cat-color:${cat.color}"
+  const entries = Object.entries(CAT_CFG);
+
+  // ── Pokud ikony již existují: jen aktualizuj třídy (NO BLINK!) ──
+  if (el.children.length === entries.length) {
+    Array.from(el.children).forEach(ico => {
+      const k = ico.dataset.cat;
+      if (!k) return;
+      const isActive = !!ST.catActive[k];
+      const isDimmed = ST.filterMode && ST.filterKey !== k;
+      ico.classList.toggle('active', isActive && !isDimmed);
+      ico.classList.toggle('dimmed', isDimmed);
+      const cnt = ico.querySelector('.mob-cat-cnt');
+      if (cnt) cnt.textContent = c[k] ?? 0;
+    });
+    return;
+  }
+
+  // ── První render: postav celé DOM ─────────────────────────────
+  el.innerHTML = entries.map(([k, cat]) => {
+    const isActive = !!ST.catActive[k];
+    const isDimmed = ST.filterMode && ST.filterKey !== k;
+    return `<div class="mob-cat-ico${isActive && !isDimmed ? ' active' : ''}${isDimmed ? ' dimmed' : ''}"
+                 data-cat="${k}" style="--cat-color:${cat.color}"
                  onclick="toggleCat('${k}')">
       <div class="mob-cat-bubble">${cat.icon}</div>
       <div class="mob-cat-lbl">${cat.label.split(/[ &]/)[0]}</div>
-      <div class="mob-cat-cnt">${c[k]}</div>
+      <div class="mob-cat-cnt">${c[k] ?? 0}</div>
     </div>`;
   }).join('');
 }
 
 
 // ── MOBILNÍ SUBKATEGORIE — pills nad výsledky ────────────────────
-// Zobrazí se jen pokud je aktivní solo-filtr kategorie se subkategoriemi
 function renderMobSubcats() {
   const el = document.getElementById('mob-subcat-wrap');
   if (!el) return;
   el.innerHTML = '';
+
+  // Skryj v pokročilém režimu
+  if (typeof advancedMode !== 'undefined' && advancedMode) return;
 
   // Zobrazit jen pokud filtrujeme solo kategorii se subkategoriemi
   if (!ST.filterMode || !ST.filterKey) return;
   const cat = CAT_CFG[ST.filterKey];
   if (!cat?.subs || Object.keys(cat.subs).length === 0) return;
 
+  // Spočítej POI v každé subkategorii aktivní kategorie
+  const subCounts = {};
+  ST.features
+    .filter(f => f.properties.kategorie === ST.filterKey)
+    .forEach(f => {
+      const s = f.properties.podkategorie;
+      if (s) subCounts[s] = (subCounts[s] || 0) + 1;
+    });
+
   for (const [k, sub] of Object.entries(cat.subs)) {
+    // Přeskoč prázdné subkategorie
+    if (!subCounts[k]) continue;
+
     if (ST.subActive[k] === undefined) ST.subActive[k] = true;
     const pill = document.createElement('span');
-    pill.className = 'mob-sub-pill' + (ST.subActive[k] ? ' active' : '');
+    pill.className   = 'mob-sub-pill' + (ST.subActive[k] ? ' active' : '');
+    pill.dataset.key = k;                           // pro sync
     pill.style.color = sub.color || cat.color;
-    pill.innerHTML = `<span class="mob-sub-pill-ico">${sub.icon}</span>${sub.label}`;
-    pill.onclick = () => toggleSub(k);
+    pill.innerHTML   = `<span class="mob-sub-pill-ico">${sub.icon}</span>${sub.label}`;
+    pill.onclick     = () => toggleSub(k);
     el.appendChild(pill);
   }
 }
@@ -356,12 +392,12 @@ function toggleCat(k) {
 
 function toggleSub(k) {
   ST.subActive[k] = !ST.subActive[k];
+  // Desktop sub-chip
   document.getElementById('subchip-' + k)?.classList.toggle('active', ST.subActive[k]);
-  // Sync mobile pill
-  document.querySelectorAll('.mob-sub-pill').forEach(p => {
-    if (p.dataset.key === k) p.classList.toggle('active', ST.subActive[k]);
-  });
-  renderPOI(); renderResults();
+  renderPOI();
+  renderResults();
+  // Mobilní pills — překresli (aktualizuje active stav + zachová data-key sync)
+  renderMobSubcats();
 }
 
 function doSearch(q) {

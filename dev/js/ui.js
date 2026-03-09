@@ -249,7 +249,10 @@ function _updateGeoMarker(lat, lng, acc) {
                border-radius:50%;box-shadow:0 0 10px #3b82f6aa"></div>`,
       className: '', iconSize: [14,14], iconAnchor: [7,7],
     });
-    _geoMarker = L.marker([lat, lng], { icon: ico, zIndexOffset: 700 })
+    _geoMarker = L.marker([lat, lng], {
+        icon: ico, zIndexOffset: 700,
+        rotateWithView: true,   // zůstane vzpřímený při rotaci mapy
+      })
       .addTo(map)
       .bindPopup(`<div style="padding:8px 10px;font-size:.75rem">
         📍 Vaše poloha<br>

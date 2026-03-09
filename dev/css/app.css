@@ -465,12 +465,6 @@ body.nav-on #dbadge { display: none !important; }
 #nav-recenter-btn2 { display: none; }
 #nav-recenter-btn2.on { display: flex; }
 
-/* ════════════════════════════════════════════════════════════════
-   MAP TILT — perspektivní pohled ve směru jízdy
-   transform-origin je nastavena JS v pixelech (not %) aby seděla
-   na správnou výškovou pozici i uvnitř tilt-wrap
-   ════════════════════════════════════════════════════════════════ */
-
 /* Nav-tilt: statický stav — BEZ transition (nechceme jitter každý GPS update) */
 #map.nav-tilt {
   will-change: transform;
@@ -854,11 +848,32 @@ body.nav-on #dbadge { display: none !important; }
     display: inline-flex; align-items: center; gap: 4px;
     padding: 3px 9px; border-radius: 20px;
     font-size: .72rem; font-weight: 500; cursor: pointer;
-    border: 1.5px solid currentColor; transition: all .15s;
-    opacity: .5;
+    /* rámeček POUZE na zapnutých (active) subkategoriích */
+    border: 1.5px solid transparent;
+    transition: all .18s;
+    opacity: .45;
   }
-  .mob-sub-pill.active { opacity: 1; background: rgba(0,0,0,.18); }
+  /* Zapnutá (active) subkategorie — plná viditelnost + rámeček */
+  .mob-sub-pill.active {
+    opacity: 1;
+    border-color: currentColor;
+    background: rgba(255,255,255,.08);
+  }
   .mob-sub-pill-ico { font-size: .75rem; }
+}
+
+/* ════════════════════════════════════════════════════════════════
+   GEO FLASH — rozsvítí GPS tlačítko při pokusu o navigaci bez polohy
+   ════════════════════════════════════════════════════════════════ */
+@keyframes geoFlash {
+  0%   { box-shadow: 0 2px 14px rgba(59,130,246,.4); transform: scale(1); }
+  40%  { box-shadow: 0 0 0 10px rgba(59,130,246,.25), 0 2px 18px rgba(59,130,246,.9);
+         transform: scale(1.15); background: var(--accent); color: #fff; }
+  100% { box-shadow: 0 2px 14px rgba(59,130,246,.4); transform: scale(1); }
+}
+#fab-geo.geo-flash {
+  animation: geoFlash .55s ease 4;
+  border-color: var(--accent) !important;
 }
 
 /* Desktop skryje mob-only prvky */

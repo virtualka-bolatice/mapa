@@ -48,7 +48,7 @@
       </svg>
       Sledovat
     </button>
-    <button class="nav-act-btn nav-act-compass" id="nav-persp-btn" onclick="togglePerspMode()" title="Perspektivní pohled ve směru jízdy">
+    <button class="nav-act-btn nav-act-compass" id="nav-persp-btn" onclick="toggleCompassMode()" title="Kompas — mapa se otáčí ve směru jízdy">
       <svg id="nav-compass-svg" width="16" height="16" viewBox="0 0 24 24" fill="none">
         <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.5"/>
         <polygon points="12,3 14.5,12 12,10 9.5,12" fill="#ef4444"/>
@@ -291,7 +291,16 @@
 
 <!-- ══ APLIKAČNÍ JS ═════════════════════════════════════════════ -->
 <script src="js/config.js"></script>
+
+<!-- leaflet-rotate: MUSÍ být před map.js (rozšiřuje L.Map, L.Marker) -->
+<script src="https://cdn.jsdelivr.net/npm/leaflet-rotate@0.2.8/dist/leaflet-rotate-src.js"
+        onerror="console.warn('leaflet-rotate CDN nedostupné')"></script>
+
 <script src="js/map.js"></script>
+
+<!-- leaflet-moving-rotated-marker: hladké pohyby nav markeru -->
+<script src="https://cdn.jsdelivr.net/npm/leaflet-moving-rotated-marker@0.0.1/src/MovingMarker.js"
+        onerror="console.warn('leaflet-moving-rotated-marker CDN nedostupné')"></script>
 <script src="js/layers.js"></script>
 <script src="js/poi.js"></script>
 <script src="js/measure.js"></script>

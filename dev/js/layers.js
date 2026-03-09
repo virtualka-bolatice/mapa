@@ -291,6 +291,8 @@ function toggleAdvanced() {
     const si = document.getElementById('search-inp');
     if (si) si.value = '';
     if (typeof doSearch === 'function') doSearch('');
+    // Skryj mobilní subkategorie
+    if (typeof renderMobSubcats === 'function') renderMobSubcats();
   }
 
   // Stats panel — jen pokročilý (desktop + mobile)

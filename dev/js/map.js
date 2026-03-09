@@ -28,6 +28,11 @@ const map = L.map('map', {
   zoomControl:  false,
   maxZoom:      20,
   minZoom:      8,
+  // leaflet-rotate: nativní rotace mapy bez CSS hackování
+  rotate:       true,
+  bearing:      0,
+  touchRotate:  true,       // 2 prsty na mobilu = rotace
+  shiftKeyRotate: true,     // Shift+drag na desktopu
 });
 
 L.control.zoom ({ position: 'bottomright' }).addTo(map);
