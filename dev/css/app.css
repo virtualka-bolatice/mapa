@@ -43,11 +43,10 @@ html, body {
 /* ── Layout ─────────────────────────────────────────────────────── */
 #app  { display: flex; flex-direction: column; height: 100vh; }
 
-/* tilt-wrap: obal mapy — flex:1 na desktopu, overflow:hidden klipuje černé rohy při tiltu */
+/* tilt-wrap: obal mapy — flex:1 výška, bez overflow:hidden (jinak leaflet-rotate ořezává vrstvy) */
 #tilt-wrap {
   flex: 1;
   position: relative;
-  overflow: hidden;
   z-index: 1;
 }
 /* #map uvnitř tilt-wrap — vždy vyplní celý tilt-wrap */
@@ -356,8 +355,15 @@ header {
 .leaflet-popup-content-wrapper {
   background: var(--surface) !important; border: 1px solid var(--border) !important;
   border-radius: var(--r) !important; box-shadow: var(--sh) !important; padding: 0 !important;
+  min-width: 300px !important;
+  max-width: min(380px, calc(100vw - 32px)) !important;
 }
-.leaflet-popup-content { margin: 0 !important; width: auto !important; font-family: 'DM Sans', sans-serif !important; }
+.leaflet-popup-content {
+  margin: 0 !important;
+  width: 320px !important;
+  max-width: min(360px, calc(100vw - 40px)) !important;
+  font-family: 'DM Sans', sans-serif !important;
+}
 .leaflet-popup-tip     { background: var(--surface) !important; }
 .leaflet-popup-close-button { color: var(--muted) !important; top: 6px !important; right: 8px !important; font-size: 1rem !important; }
 
@@ -599,6 +605,9 @@ body.nav-on #dbadge { display: none !important; }
 #fab-msr.on     { background: var(--acc2);   border-color: var(--acc2);   }
 #fab-nav        { display: none; background: rgba(14,165,233,.15); border-color: var(--acc3); color: var(--acc3); }
 #fab-nav.on     { display: flex; }
+/* North-reset button: normálně skrytý, zobrazí se gdy je mapa otočená (body.map-rotated) */
+#fab-north      { display: none; border-color: var(--acc3); color: var(--acc3); font-size: .7rem; }
+body.map-rotated #fab-north { display: flex; animation: fadeIn .2s ease; }
 
 /* ════════════════════════════════════════════════════════════════
    MĚŘICÍ PANEL
@@ -874,6 +883,26 @@ body.nav-on #dbadge { display: none !important; }
 #fab-geo.geo-flash {
   animation: geoFlash .55s ease 4;
   border-color: var(--accent) !important;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   POI IKONY — counter-rotace při rotaci mapy
+   --map-bearing je nastavena v map.js při každé rotaci mapy (rotate event).
+   Tím pádem se POI piny vždy zobrazí vzpřímeně bez ohledu na bearing mapy.
+   Nav marker (.nav-pos-marker) counter-rotaci NEdostává — otáčí se se směrem jízdy.
+   ════════════════════════════════════════════════════════════════ */
+.poi-north-keep {
+  display: inline-block;
+  /* rotate(calc(...)) musí být v deg — CSS vars jsou čísla bez jednotky */
+  transform: rotate(calc(var(--map-bearing, 0) * -1deg));
+  transform-origin: 50% 100%; /* pivot = špička pinu */
+  transition: transform 0.25s ease;
+  will-change: transform;
+}
+
+/* navPane: vypni pointerEvents na celé vrstvě (polyline je neinteraktivní) */
+.leaflet-navPane-pane {
+  pointer-events: none !important;
 }
 
 /* Desktop skryje mob-only prvky */

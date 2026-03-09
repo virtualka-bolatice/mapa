@@ -32,16 +32,21 @@ const ST = {
 Object.keys(CAT_CFG).forEach(k => ST.catActive[k] = true);
 
 // ── IKONY ────────────────────────────────────────────────────────
+// fid = unique filter ID (bez kolizí když je 30+ ikon na mapě)
+let _iconSeq = 0;
 function makeIcon(emoji, color, sz = 33) {
   const s = sz;
+  const fid = 'f' + (++_iconSeq);
+  // .poi-north-keep: CSS counter-rotace přes --map-bearing proměnnou (map.js)
+  // zajistí že pin vždy stojí vzpřímeně i při rotaci mapy 2 prsty
   return L.divIcon({
-    html: `<svg xmlns="http://www.w3.org/2000/svg" width="${s}" height="${s+8}" viewBox="0 0 ${s} ${s+8}">
-      <defs><filter id="fs"><feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="${color}" flood-opacity=".45"/></filter></defs>
-      <circle cx="${s/2}" cy="${s/2}" r="${s/2-1.5}" fill="${color}" filter="url(#fs)" opacity=".95"/>
+    html: `<div class="poi-north-keep"><svg xmlns="http://www.w3.org/2000/svg" width="${s}" height="${s+8}" viewBox="0 0 ${s} ${s+8}">
+      <defs><filter id="${fid}"><feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="${color}" flood-opacity=".45"/></filter></defs>
+      <circle cx="${s/2}" cy="${s/2}" r="${s/2-1.5}" fill="${color}" filter="url(#${fid})" opacity=".95"/>
       <circle cx="${s/2}" cy="${s/2}" r="${s/2-5}" fill="rgba(255,255,255,.12)"/>
       <text x="${s/2}" y="${s/2+5}" text-anchor="middle" font-size="${Math.round(s*.38)}">${emoji}</text>
       <line x1="${s/2}" y1="${s-1.5}" x2="${s/2}" y2="${s+6}" stroke="${color}" stroke-width="1.8" opacity=".45"/>
-    </svg>`,
+    </svg></div>`,
     className: '', iconSize: [s, s+8], iconAnchor: [s/2, s+8], popupAnchor: [0, -(s+8)],
   });
 }
@@ -64,6 +69,16 @@ async function loadPOI() {
     : `✅ POI načteno: ${src}`);
 
   ST.features = (gj.features || []).filter(f => f.geometry?.type === 'Point' && f.geometry.coordinates);
+
+  // Inicializuj subActive pro VŠECHNY podkategorie na true
+  // (bez tohoto by první klik na toggle nastavil z undefined na true místo false)
+  ST.features.forEach(f => {
+    const k = f.properties.podkategorie;
+    if (k && ST.subActive[k] === undefined) ST.subActive[k] = true;
+  });
+  Object.entries(CAT_CFG).forEach(([, cat]) => {
+    if (cat.subs) Object.keys(cat.subs).forEach(k => { if (ST.subActive[k] === undefined) ST.subActive[k] = true; });
+  });
 
   ST.features.forEach(f => {
     const p = f.properties;
@@ -102,12 +117,22 @@ function toggleSubList() {
 
 // ── RENDEROVÁNÍ ──────────────────────────────────────────────────
 function renderPOI() {
+  // 1) Standardní cleanup přes Leaflet API
   poiGroup.clearLayers();
+
+  // 2) Paranoidní DOM cleanup — leaflet-rotate může zanechat ghost elementy
+  //    .poi-north-keep je naše třída (makeIcon), takže je selektivní
+  document.querySelectorAll('.leaflet-marker-icon .poi-north-keep').forEach(el => {
+    el.closest('.leaflet-marker-icon')?.remove();
+  });
+
+  if (typeof advancedMode !== 'undefined' && advancedMode) return;
+
   ST.features.forEach(f => {
     const p   = f.properties;
     const cat = CAT_CFG[p.kategorie];
     if (!cat || !ST.catActive[p.kategorie]) return;
-    if (p.kategorie === 'sluzby' && p.podkategorie && ST.subActive[p.podkategorie] === false) return;
+    if (p.podkategorie && ST.subActive[p.podkategorie] === false) return;
     if (ST.searchQ) {
       const q = ST.searchQ.toLowerCase();
       if (![(p.nazev||''),(p.adresa||''),(p.typ||'')].some(s => s.toLowerCase().includes(q))) return;
@@ -118,12 +143,9 @@ function renderPOI() {
     if (sc) { color = sc.color; icon = sc.icon; }
 
     const [lng, lat] = f.geometry.coordinates;
-    const m = L.marker([lat, lng], {
-      icon:           makeIcon(icon, color),
-      rotateWithView: true,   // leaflet-rotate: PIN zůstane vzpřímený při rotaci mapy
-    });
+    const m = L.marker([lat, lng], { icon: makeIcon(icon, color) });
     m.feature = f;
-    m.bindPopup(buildPOIPopup(p, color, icon, lat, lng), { maxWidth: 295 });
+    m.bindPopup(buildPOIPopup(p, color, icon, lat, lng), { maxWidth: 360, minWidth: 300 });
     poiGroup.addLayer(m);
   });
 }
@@ -315,7 +337,8 @@ function _renderResultsInto(listId, cntId) {
   const visible = ST.features.filter(f => {
     const p = f.properties;
     if (!ST.catActive[p.kategorie]) return false;
-    if (p.kategorie === 'sluzby' && p.podkategorie && ST.subActive[p.podkategorie] === false) return false;
+    // Filtr subkategorií — všechny kategorie
+    if (p.podkategorie && ST.subActive[p.podkategorie] === false) return false;
     if (ST.searchQ) {
       const q = ST.searchQ.toLowerCase();
       if (![(p.nazev||''),(p.adresa||''),(p.typ||'')].some(s => s.toLowerCase().includes(q))) return false;
@@ -365,6 +388,9 @@ function toggleCat(k) {
       document.getElementById('chip-' + c)?.classList.toggle('dimmed', c !== k);
     });
   } else if (ST.filterKey === k) {
+    // Deselect — reset subActive pro všechny subkategorie vyfiltrované kategorie
+    const prevCat = CAT_CFG[k];
+    if (prevCat?.subs) Object.keys(prevCat.subs).forEach(s => { ST.subActive[s] = true; });
     ST.filterMode = false; ST.filterKey = null;
     Object.keys(CAT_CFG).forEach(c => {
       ST.catActive[c] = true;

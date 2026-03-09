@@ -6,6 +6,11 @@
 //  Podkladové mapy:
 //    "Mapa"    = CartoDB Positron (světlý, minimalistický)
 //    "Ortofoto"= ČÚZK ORTOFOTO_WM, záloha Esri World Imagery
+//
+//  leaflet-rotate plugin: aktivuje se POUZE pokud CDN úspěšně načetl
+//    (detekce přes L.Map.prototype.getBearing).
+//    BEZ pluginu: touchRotate / 2-prsty rotace nejsou dostupné, ale
+//    vše ostatní (trasa, navigace, POI) funguje normálně.
 // ════════════════════════════════════════════════════════════════
 
 // ── CRS ──────────────────────────────────────────────────────────
@@ -20,6 +25,12 @@ try {
   mapCRS = L.CRS.EPSG3857;
 }
 
+// ── Detekce leaflet-rotate pluginu ───────────────────────────────
+// Plugin přidává setBearing/getBearing na L.Map.prototype.
+// Kontrola se provede SYNCHRONNĚ po načtení CDN <script> tagu.
+const _rotatePlugin = (typeof L !== 'undefined') &&
+                      (typeof L.Map.prototype.getBearing === 'function');
+
 // ── MAPA ─────────────────────────────────────────────────────────
 const map = L.map('map', {
   crs:          mapCRS,
@@ -28,20 +39,41 @@ const map = L.map('map', {
   zoomControl:  false,
   maxZoom:      20,
   minZoom:      8,
-  // leaflet-rotate: nativní rotace mapy bez CSS hackování
-  rotate:       true,
-  bearing:      0,
-  touchRotate:  true,       // 2 prsty na mobilu = rotace
-  shiftKeyRotate: true,     // Shift+drag na desktopu
+  // leaflet-rotate options — pouze pokud plugin načtený:
+  ...(_rotatePlugin ? {
+    rotate:          true,
+    bearing:         0,
+    touchRotate:     true,    // 2 prsty na mobilu = rotace
+    shiftKeyRotate:  true,    // Shift+drag na desktopu
+  } : {}),
 });
 
 L.control.zoom ({ position: 'bottomright' }).addTo(map);
 L.control.scale({ position: 'bottomleft', imperial: false, metric: true }).addTo(map);
 
+// ── Navigační pane — nad tiles (400) i overlayPane, viditelná vždy ─
+map.createPane('navPane');
+map.getPane('navPane').style.zIndex = '450';
+map.getPane('navPane').style.pointerEvents = 'none'; // kliknutí prochází přes trasu
+
+// ── CSS proměnná --map-bearing pro counter-rotaci POI ikon ───────
+// Aktualizuje se při každé rotaci mapy (2 prsty / Shift+drag / setBearing)
+// Hodnota je číslo bez jednotky — CSS: calc(var(--map-bearing, 0) * -1deg)
+function _onMapRotate() {
+  const b = (typeof map.getBearing === 'function') ? (map.getBearing() || 0) : 0;
+  document.documentElement.style.setProperty('--map-bearing', b);
+}
+// Inicializace na 0
+document.documentElement.style.setProperty('--map-bearing', 0);
+if (_rotatePlugin) {
+  map.on('rotate',    _onMapRotate);
+  map.on('rotateend', _onMapRotate);
+}
+
 // ── PODKLADOVÉ MAPY ──────────────────────────────────────────────
 const TILES = {
   mapa: L.tileLayer(
-    'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+    'https://{s}.basemaps.cartocdn.com/rastertiles/voyager_labels_under/{z}/{x}/{y}{r}.png',
     { attribution: '© OpenStreetMap © CARTO', subdomains: 'abcd', maxZoom: 20, minZoom: 8 }
   ),
   orto: L.tileLayer(
