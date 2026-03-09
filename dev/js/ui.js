@@ -145,8 +145,16 @@ function toggleSB() {
   sbOpen = !sbOpen;
   const sb = document.getElementById('sidebar');
   sb?.classList.toggle('closed', !sbOpen);
-  // Landscape: body class řídí šířku tilt-wrap přes CSS
-  if (isLandscapeMob()) document.body.classList.toggle('ls-sb-closed', !sbOpen);
+  // Landscape: body class mění CSS var --ml → všechny map elementy se přesunou plynule
+  if (isLandscapeMob()) {
+    document.body.classList.toggle('ls-sb-closed', !sbOpen);
+    // Po ukončení CSS přechodu (.28s) nech Leaflet překreslit dlaždice pro novou velikost
+    setTimeout(() => {
+      if (typeof map !== 'undefined' && map.invalidateSize) {
+        map.invalidateSize({ animate: false });
+      }
+    }, 300);
+  }
   const h = document.getElementById('sb-handle');
   if (h) { h.classList.toggle('closed', !sbOpen); h.textContent = sbOpen ? '◀' : '▶'; }
   document.getElementById('sb-hbtn')?.classList.toggle('on', sbOpen);
@@ -379,6 +387,7 @@ window.addEventListener('load', async () => {
 
   poiGroup.bringToFront();
   updateLayoutPositions();
+  _syncCatsAccordion();
 
   _bsInit();
   _initBSSwipe();
@@ -388,7 +397,20 @@ window.addEventListener('load', async () => {
   setTimeout(() => document.getElementById('loading').remove(), 500);
 });
 
+// ── Kategorie accordion — landscape default zavřený ─────────────
+// Při přechodu do landscape se <details> zavře; při opuštění zůstane otevřený (open attr v HTML).
+function _syncCatsAccordion() {
+  const det = document.getElementById('ls-cats-details');
+  if (!det) return;
+  if (isLandscapeMob()) {
+    det.removeAttribute('open');   // vstup do landscape → zavřít
+  } else {
+    det.setAttribute('open', ''); // portrait/desktop → vždy otevřený
+  }
+}
+
 window.addEventListener('resize', () => {
+  _syncCatsAccordion();
   updateLayoutPositions();
   if (isMobile()) {
     _bsSnapTo(bsExpanded, false);

@@ -217,6 +217,12 @@ header {
 .sb-sec   { padding: 7px 11px 4px; border-top: 1px solid var(--border); }
 .sb-sec-l { font-size: .6rem; letter-spacing: 1.3px; text-transform: uppercase; color: var(--dim); margin-bottom: 5px; }
 
+/* ── Kategorie accordion — mimo landscape: details jako průhledný obal ──
+   summary je skrytý → details vždy open (open attr v HTML) → chipy normálně viditelné */
+.ls-cats-details         { display: contents; }
+.ls-cats-details summary { display: none; }
+.ls-cat-body             { display: contents; }
+
 /* Stav skryté sekce */
 .sec-hidden { display: none !important; }
 
@@ -885,13 +891,34 @@ body.map-rotated #fab-north { display: flex; opacity: 1; transition: opacity .35
    ════════════════════════════════════════════════════════════════ */
 @media (orientation: landscape) and (max-height: 560px) {
 
-  /* ── Proměnné ── */
+  /* ══════════════════════════════════════════════════════════════
+     CSS PROMĚNNÁ --ml (map-left): řídí levý okraj mapové plochy.
+     Mění se podle stavu sidebaru (otevřený / zavřený).
+     VŠECHNY map-area elementy používají var(--ml) pro left.
+     Transition: left .28s → prvky se plynule posouvají s panelem.
+     ══════════════════════════════════════════════════════════════ */
   :root {
     --hdr:   38px;
-    --ls-sw: 210px;   /* šířka sidebar v landscape */
+    --ls-sw: 210px;
+    --ml:    var(--ls-sw);   /* výchozí: sidebar otevřený */
+  }
+  body.ls-sb-closed {
+    --ml: 0px;               /* sidebar zavřený → mapa na plnou šířku */
   }
 
-  /* ── Header — kompaktní ── */
+  /* Prvky posouvající se s mapou dostávají transition left.
+     POZOR: .leaflet-bottom.leaflet-left je uvnitř #tilt-wrap, NENÍ zde — ten se pohybuje sám. */
+  #dbadge,
+  #nav-widget,
+  #nav-pick-btn,
+  #nav-confirm,
+  #nav-recenter-btn,
+  #msr-panel,
+  #stats-panel {
+    transition: left .28s cubic-bezier(.4,0,.2,1) !important;
+  }
+
+  /* ── Header ── */
   header     { height: 38px; padding: 0 8px; gap: 6px; }
   .logo      { font-size: .84rem; }
   .logo-sub  { display: none; }
@@ -899,7 +926,7 @@ body.map-rotated #fab-north { display: flex; opacity: 1; transition: opacity .35
   .tbtn      { padding: 3px 7px; font-size: .61rem; height: 26px; }
   #tile-sw   { border-radius: 6px; }
 
-  /* ── Mapa — začíná za sidebarem, plynulý přechod při toggle ── */
+  /* ── Mapa — začíná za sidebarem, přechod synchronní s --ml ── */
   #tilt-wrap {
     position: absolute !important;
     top: var(--hdr) !important;
@@ -908,14 +935,11 @@ body.map-rotated #fab-north { display: flex; opacity: 1; transition: opacity .35
     bottom: 0 !important;
     transition: left .28s cubic-bezier(.4,0,.2,1);
   }
-  /* Sidebar zavřený — mapa rozšíří na plnou šířku (třídu přidává JS) */
   body.ls-sb-closed #tilt-wrap {
     left: 0 !important;
   }
 
-  /* ── Sidebar → levý panel (jako desktop, ale užší) ──
-     Přebíjíme portrait-mobile bottom-sheet styl.
-     Sidebar je vždy viditelný, žádný swipe/peek. ── */
+  /* ── Sidebar → levý panel ── */
   #sidebar {
     position: absolute !important;
     top: var(--hdr) !important;
@@ -932,17 +956,21 @@ body.map-rotated #fab-north { display: flex; opacity: 1; transition: opacity .35
     transition: transform .28s cubic-bezier(.4,0,.2,1) !important;
     overflow-y: auto !important;
     overflow-x: hidden !important;
+    /* Zajistí pokrytí gapů při animaci — žádný černý flash */
+    background: var(--surface) !important;
+    z-index: 500 !important;
   }
+  body { background: var(--surface); }   /* gap při animaci = var(--surface), ne černá */
+
   /* Zavřený sidebar: sjede doleva */
   #sidebar.closed {
     transform: translateX(-100%) !important;
-    transition: transform .28s cubic-bezier(.4,0,.2,1) !important;
   }
 
-  /* Drag pill — schovaný (sidebar se neposouvá) */
+  /* Drag pill — skrytý */
   #mob-bs-pill { display: none !important; }
 
-  /* BS-top — kompaktní pruh s ikonami kategorií */
+  /* BS-top — kompaktní, bez mob-cat-icons */
   #mob-bs-top {
     display: flex !important;
     flex-direction: column !important;
@@ -953,20 +981,8 @@ body.map-rotated #fab-north { display: flex; opacity: 1; transition: opacity .35
     touch-action: auto !important;
   }
 
-  /* Kategorie ikony — svislý scrollovatelný sloupec */
-  #mob-cat-icons {
-    display: flex !important;
-    flex-direction: row !important;
-    flex-wrap: wrap !important;
-    gap: 5px !important;
-    overflow-x: hidden !important;
-    overflow-y: hidden !important;
-    padding-bottom: 0 !important;
-  }
-  .mob-cat-bubble { width: 26px; height: 26px; font-size: .78rem; }
-  .mob-cat-lbl    { display: none; }
-  .mob-cat-cnt    { font-size: .52rem; }
-  .mob-cat-ico    { min-width: 30px; padding: 2px; flex-direction: row; gap: 4px; }
+  /* Kategorie ikony — SKRYTÉ v landscape (není místo) */
+  #mob-cat-icons { display: none !important; }
 
   /* Scroll obsah sidebaru */
   #sb-scroll {
@@ -978,7 +994,7 @@ body.map-rotated #fab-north { display: flex; opacity: 1; transition: opacity .35
   /* Sidebar handle — skrytý */
   #sb-handle { display: none !important; }
 
-  /* ── FAB sloupec — vpravo od mapy, nad spodním okrajem ── */
+  /* ── FAB sloupec — vpravo, fixní (nezávislý na sidebaru) ── */
   #fab-col {
     right: 8px !important;
     bottom: 36px !important;
@@ -991,37 +1007,11 @@ body.map-rotated #fab-north { display: flex; opacity: 1; transition: opacity .35
     font-size: .78rem !important;
   }
 
-  /* ── Informační znělka (badge) — uprostřed nahoře mapové plochy ── */
-  #dbadge {
-    top: calc(var(--hdr) + 5px) !important;
-    bottom: auto !important;
-    left: calc(var(--ls-sw) + (100vw - var(--ls-sw)) / 2) !important;
-    transform: translateX(-50%) !important;
-    font-size: clamp(.55rem, 1.8dvh, .65rem) !important;
-    padding: clamp(2px, .8dvh, 5px) clamp(8px, 2dvw, 14px) !important;
-    border-radius: 16px !important;
-    white-space: nowrap !important;
-    max-width: calc(100vw - var(--ls-sw) - 90px) !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
-  }
-
-  /* ── Countery — uprostřed dole mapové plochy ── */
-  /* Countery: skryté v landscape (málo výškového prostoru) */
-  /* display:none + visibility:hidden zabraňuje zobrazení kdekoliv */
-  #poi-overview,
-  #stats-panel {
-    display: none !important;
-    visibility: hidden !important;
-  }
-
-  /* ── Zoom — skryté (prsty / gesture) ── */
-  .leaflet-control-zoom { display: none !important; }
-
-  /* ── Měřítko — levý dolní roh mapové plochy ── */
+  /* ── Měřítko — uvnitř #tilt-wrap (relativní k mapě, ne viewportu).
+     #tilt-wrap se posouvá se sidebarem → left:6px stačí, NO calc(--ml). */
   .leaflet-bottom.leaflet-left {
     bottom: clamp(2px, 1dvh, 6px) !important;
-    left: calc(var(--ls-sw) + 6px) !important;
+    left: 6px !important;
     margin-left: 0 !important;
   }
   .leaflet-control-scale-line {
@@ -1029,83 +1019,133 @@ body.map-rotated #fab-north { display: flex; opacity: 1; transition: opacity .35
     padding: 1px 4px !important;
   }
 
-  /* ── Nav widget — vlevo nahoře mapové plochy ── */
-  #nav-widget {
-    top: calc(var(--hdr) + 6px) !important;
-    left: calc(var(--ls-sw) + 6px) !important;
-    right: auto !important;
-    padding: 7px 10px 6px !important;
-    min-width: 165px !important;
-    max-width: 215px !important;
-    border-radius: 10px !important;
+  /* ── Zoom — skrytý ── */
+  .leaflet-control-zoom { display: none !important; }
+
+  /* ── Pokročilý režim tlačítko — nezalomit text v úzkém panelu ── */
+  #adv-btn { white-space: nowrap; overflow: hidden; font-size: .68rem; padding: 5px 7px; }
+  #adv-pill { flex-shrink: 0; }
+
+  /* ── Badge — uprostřed mapové plochy, posouvá se s --ml ── */
+  #dbadge {
+    top: calc(var(--hdr) + clamp(3px, 1dvh, 8px)) !important;
+    bottom: auto !important;
+    left: calc(var(--ml) + (100vw - var(--ml)) / 2) !important;
+    transform: translateX(-50%) !important;
+    font-size: clamp(.52rem, 1.7dvh, .63rem) !important;
+    padding: clamp(2px, .7dvh, 4px) clamp(7px, 1.8dvw, 13px) !important;
+    border-radius: 14px !important;
+    white-space: nowrap !important;
+    max-width: calc(100vw - var(--ml) - 80px) !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
   }
-  .nav-dest-name { font-size: .75rem; }
-  .nav-time-val  { font-size: 1rem; }
-  .nav-dist      { font-size: .62rem; }
-  .nav-main-row  { margin-bottom: 5px; gap: 6px; }
-  .nav-head      { margin-bottom: 5px; gap: 5px; }
-  .nav-actions   { gap: 4px; }
-  .nav-act-btn   { padding: 3px 5px; font-size: .58rem; gap: 2px; }
-  .nav-close     { width: 18px; height: 18px; font-size: .65rem; }
+
+  /* ── POI overview — vždy skryt ── */
+  #poi-overview { display: none !important; visibility: hidden !important; }
+
+  /* ── Stats panel — skrytý, v pokročilém viditelný ── */
+  #stats-panel {
+    display: none !important;
+    visibility: hidden !important;
+  }
+  #stats-panel.adv-show {
+    display: flex !important;
+    visibility: visible !important;
+    position: fixed !important;
+    bottom: clamp(3px, 1.2dvh, 8px) !important;
+    left: calc(var(--ml) + (100vw - var(--ml)) / 2) !important;
+    transform: translateX(-50%) !important;
+    font-size: clamp(.55rem, 1.5dvh, .65rem) !important;
+    padding: clamp(3px, .9dvh, 6px) clamp(8px, 1.8dvw, 12px) !important;
+    gap: clamp(8px, 2dvw, 14px) !important;
+    border-radius: 8px !important;
+    z-index: 910 !important;
+    pointer-events: none;
+  }
+  #stats-panel.adv-show .stat-dot    { width: 6px; height: 6px; }
+  #stats-panel.adv-show .stat strong { font-size: clamp(.6rem, 1.6dvh, .72rem); }
+
+  /* ── Nav widget — levý horní roh mapové plochy ── */
+  #nav-widget {
+    top: calc(var(--hdr) + clamp(4px, 1.2dvh, 8px)) !important;
+    left: calc(var(--ml) + 6px) !important;
+    right: auto !important;
+    padding: clamp(5px, 1.4dvh, 9px) clamp(8px, 2dvw, 12px) clamp(4px, 1.2dvh, 8px) !important;
+    min-width: clamp(140px, 28dvw, 200px) !important;
+    max-width: clamp(160px, 32dvw, 220px) !important;
+    border-radius: clamp(7px, 1.8dvh, 11px) !important;
+  }
+  .nav-dest-name { font-size: clamp(.65rem, 1.8dvh, .78rem); }
+  .nav-time-val  { font-size: clamp(.88rem, 2.4dvh, 1.05rem); }
+  .nav-dist      { font-size: clamp(.56rem, 1.5dvh, .65rem); }
+  .nav-main-row  { margin-bottom: clamp(3px, .8dvh, 6px); gap: clamp(4px, 1dvw, 8px); }
+  .nav-head      { margin-bottom: clamp(3px, .8dvh, 6px); gap: clamp(3px, .8dvw, 6px); }
+  .nav-actions   { gap: clamp(3px, .7dvw, 5px); }
+  .nav-act-btn   { padding: clamp(2px, .6dvh, 4px) clamp(4px, 1dvw, 7px); font-size: clamp(.54rem, 1.4dvh, .62rem); gap: 2px; }
+  .nav-close     { width: clamp(16px, 4dvh, 20px); height: clamp(16px, 4dvh, 20px); font-size: clamp(.58rem, 1.6dvh, .72rem); }
 
   /* ── Vybrat cíl na mapě — levý dolní roh mapové plochy ── */
   #nav-pick-btn {
-    bottom: clamp(6px, 2dvh, 22px) !important;
-    left: calc(var(--ls-sw) + 8px) !important;
+    bottom: clamp(6px, 1.8dvh, 20px) !important;
+    left: calc(var(--ml) + 8px) !important;
     top: auto !important;
     right: auto !important;
-    font-size: clamp(.58rem, 1.8dvh, .7rem) !important;
-    padding: clamp(4px, 1.2dvh, 7px) clamp(9px, 2.5dvw, 14px) !important;
+    font-size: clamp(.55rem, 1.6dvh, .68rem) !important;
+    padding: clamp(4px, 1.1dvh, 7px) clamp(8px, 2dvw, 13px) !important;
+    border-radius: clamp(6px, 1.5dvh, 10px) !important;
   }
 
-  /* ── Klikni na cíl / Změnit cíl (nav-confirm) — uprostřed nahoře mapové plochy ── */
+  /* ── Nav-confirm (Navigovat / Zrušit) — horní střed mapové plochy ── */
   #nav-confirm {
-    top: calc(var(--hdr) + 5px) !important;
-    left: calc(var(--ls-sw) + (100vw - var(--ls-sw)) / 2) !important;
+    top: calc(var(--hdr) + clamp(4px, 1dvh, 7px)) !important;
+    left: calc(var(--ml) + (100vw - var(--ml)) / 2) !important;
     transform: translateX(-50%) !important;
-    max-width: calc(100vw - var(--ls-sw) - 20px) !important;
-    padding: clamp(4px, 1.2dvh, 8px) clamp(8px, 2dvw, 12px) !important;
-    border-radius: 10px !important;
-    gap: 7px !important;
+    max-width: calc(100vw - var(--ml) - 20px) !important;
+    padding: clamp(4px, 1dvh, 7px) clamp(7px, 1.8dvw, 11px) !important;
+    border-radius: clamp(8px, 2dvh, 11px) !important;
+    gap: clamp(5px, 1.2dvw, 9px) !important;
   }
-  .nc-dest   { max-width: clamp(80px, 18dvw, 130px); font-size: clamp(.66rem, 2dvh, .78rem); }
-  .nc-label  { font-size: clamp(.62rem, 1.9dvh, .73rem); }
-  .nc-btn    { padding: 3px 8px; font-size: clamp(.6rem, 1.8dvh, .7rem); }
+  .nc-dest   { max-width: clamp(70px, 16dvw, 125px); font-size: clamp(.62rem, 1.8dvh, .76rem); }
+  .nc-label  { font-size: clamp(.58rem, 1.7dvh, .7rem); }
+  .nc-btn    { padding: clamp(3px, .7dvh, 5px) clamp(6px, 1.5dvw, 10px); font-size: clamp(.57rem, 1.6dvh, .68rem); border-radius: clamp(5px, 1.2dvh, 8px); }
 
-  /* ── Vycentrovat (nav-recenter) — uprostřed dole mapové plochy ── */
+  /* ── Vycentrovat (nav-recenter) — dolní střed mapové plochy ── */
   #nav-recenter-btn {
-    bottom: 8px !important;
-    left: calc(var(--ls-sw) + (100vw - var(--ls-sw)) / 2) !important;
+    bottom: clamp(5px, 1.5dvh, 10px) !important;
+    left: calc(var(--ml) + (100vw - var(--ml)) / 2) !important;
     transform: translateX(-50%) !important;
-    font-size: .63rem !important;
-    padding: 5px 12px !important;
+    font-size: clamp(.58rem, 1.5dvh, .65rem) !important;
+    padding: clamp(4px, 1dvh, 6px) clamp(10px, 2.5dvw, 14px) !important;
     top: auto !important;
     right: auto !important;
+    border-radius: clamp(6px, 1.5dvh, 10px) !important;
   }
   #nav-recenter-btn2 {
-    font-size: .6rem;
-    padding: 3px 9px;
+    font-size: clamp(.55rem, 1.4dvh, .62rem) !important;
+    padding: clamp(2px, .6dvh, 4px) clamp(7px, 1.8dvw, 11px) !important;
   }
 
-  /* ── Měřicí panel — uprostřed nad countery ── */
+  /* ── Měřicí panel — střed mapové plochy ── */
   #msr-panel {
-    bottom: 36px !important;
-    left: calc(var(--ls-sw) + (100vw - var(--ls-sw)) / 2) !important;
+    bottom: clamp(30px, 8dvh, 42px) !important;
+    left: calc(var(--ml) + (100vw - var(--ml)) / 2) !important;
     right: auto !important;
     transform: translateX(-50%) !important;
     width: auto !important;
-    min-width: 200px !important;
-    font-size: .68rem !important;
-    padding: 7px 12px 6px !important;
+    min-width: clamp(170px, 38dvw, 220px) !important;
+    font-size: clamp(.62rem, 1.7dvh, .7rem) !important;
+    padding: clamp(5px, 1.4dvh, 8px) clamp(10px, 2.5dvw, 14px) clamp(4px, 1dvh, 7px) !important;
+    border-radius: clamp(7px, 1.8dvh, 11px) !important;
   }
 
-  /* ── Nav mode picker — kompaktní v landscape ── */
+  /* ── Nav mode picker — karta respektuje sidebar ── */
   #nav-mode-picker {
-    /* overlay pokrývá celou obrazovku, ale karta je vlevo od sidebaru */
-    padding-left: var(--ls-sw);
+    padding-left: var(--ml);
+    transition: padding-left .28s cubic-bezier(.4,0,.2,1);
   }
   #nmp-card {
-    width: min(300px, calc(100vw - var(--ls-sw) - 20px)) !important;
+    width: min(300px, calc(100vw - var(--ml) - 20px)) !important;
     padding: 12px 14px 10px;
     gap: 7px;
     border-radius: 12px;
@@ -1122,7 +1162,7 @@ body.map-rotated #fab-north { display: flex; opacity: 1; transition: opacity .35
   .nmp-sub    { font-size: .6rem; }
   .nmp-cancel { padding: 6px; font-size: .7rem; }
 
-  /* ── Příjezdový modal — kompaktnější ── */
+  /* ── Příjezdový modal ── */
   #nav-arrived-card {
     padding: 16px 16px 14px;
     border-radius: 14px;
@@ -1135,9 +1175,54 @@ body.map-rotated #fab-north { display: flex; opacity: 1; transition: opacity .35
   .nar-stats     { padding: 8px 6px; margin-bottom: 12px; }
   .nar-stat-val  { font-size: .88rem; }
 
-  /* Pokročilý režim v landscape */
-  body.adv-on #mob-cat-icons { display: none !important; }
-  body.adv-on #mob-bs-top    { padding: 4px 8px 4px !important; }
+  /* ── Pokročilý režim v landscape ── */
+  body.adv-on #mob-bs-top { padding: 4px 8px 4px !important; }
+
+  /* ── Kategorie POI — rozklikávací accordion v landscape ── */
+  /* Resetujeme display:contents z base CSS → details funguje jako blok */
+  .ls-cats-details {
+    display: block !important;
+    border-top: none;
+  }
+  /* summary schovaný v base → v landscape zobrazíme jako klikatelnou lištu */
+  .ls-cats-details summary {
+    display: flex !important;
+    align-items: center;
+    justify-content: space-between;
+    padding: 5px 11px;
+    font-size: .6rem;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: var(--dim);
+    cursor: pointer;
+    user-select: none;
+    list-style: none;
+    transition: color .15s;
+  }
+  .ls-cats-details summary:hover         { color: var(--text); }
+  .ls-cats-details summary::-webkit-details-marker { display: none; }
+  .ls-cats-details summary::after {
+    content: '▸';
+    font-size: .72rem;
+    color: var(--muted);
+    transition: transform .2s ease;
+    flex-shrink: 0;
+  }
+  .ls-cats-details[open] summary::after  { transform: rotate(90deg); }
+
+  /* Původní .sb-sec-l nadpis — schovaný (summary ho nahrazuje) */
+  #poi-cats-sec .sb-sec-l { display: none !important; }
+
+  /* #poi-cats-sec padding — summary má vlastní padding */
+  #poi-cats-sec { padding: 0 !important; }
+
+  /* ls-cat-body — resetujeme display:contents → flex sloupec chipů */
+  .ls-cat-body {
+    display: flex !important;
+    flex-direction: column;
+    gap: 3px;
+    padding: 2px 11px 7px;
+  }
 }
 
 /* ════════════════════════════════════════════════════════════════

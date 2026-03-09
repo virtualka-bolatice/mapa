@@ -301,6 +301,22 @@ function toggleAdvanced() {
   // POI přehled widget — jen základní
   document.getElementById('poi-overview')?.classList.toggle('adv-hide', advancedMode);
 
+  // ── ROTACE MAPY ──────────────────────────────────────────────────
+  // Pokročilý režim: zakázat rotaci + vyrovnat na sever
+  // Základní režim: obnovit rotaci
+  if (typeof map.touchRotate !== 'undefined' && map.touchRotate) {
+    advancedMode ? map.touchRotate.disable() : map.touchRotate.enable();
+  }
+  if (typeof map.shiftKeyRotate !== 'undefined' && map.shiftKeyRotate) {
+    advancedMode ? map.shiftKeyRotate.disable() : map.shiftKeyRotate.enable();
+  }
+  if (advancedMode && typeof map.setBearing === 'function') {
+    // Vyrovnej mapu na sever s animací
+    map.setBearing(0, { animate: true, duration: 0.4 });
+    // Schovej north-FAB (mapa je rovná)
+    document.body.classList.remove('map-rotated');
+  }
+
   // POI markery na mapě — skryj v pokročilém, obnov po vypnutí
   if (advancedMode) {
     // Ulož aktuální stav catActive a vymaž skupiny z mapy

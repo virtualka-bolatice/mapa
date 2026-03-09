@@ -161,7 +161,12 @@
 
     <!-- KATEGORIE POI -->
     <div class="sb-sec" id="poi-cats-sec">
+      <!-- Normální zobrazení (portrait / desktop): sb-sec-l nadpis -->
       <div class="sb-sec-l">📍 Kategorie</div>
+      <!-- Landscape mobile: chips schované v <details> accordion -->
+      <details class="ls-cats-details" id="ls-cats-details" open>
+        <summary>📍 Kategorie</summary>
+        <div class="ls-cat-body">
       <div class="cat-chip active" id="chip-gastro" style="color:var(--gastro)" onclick="toggleCat('gastro')">
         <div class="cat-dot"></div><span class="cat-chip-lbl">Gastronomie</span><span class="cat-cnt" id="cnt-gastro">0</span>
       </div>
@@ -183,6 +188,8 @@
               style="padding:2px 4px;color:var(--sluzby)">▶</span>
       </div>
       <div class="sub-wrap" id="sub-sluzby"></div>
+        </div><!-- /ls-cat-body -->
+      </details>
     </div>
 
     <!-- MOBILE SUBCAT PILLS — viditelné v BS expandovaném stavu -->
