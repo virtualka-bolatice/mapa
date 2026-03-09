@@ -737,8 +737,8 @@ function clearNav() {
   if (_cp) { _cp.style.display='none'; _cp.style.opacity=''; _cp.style.background=''; _cp.style.borderColor=''; _cp.style.color=''; }
   // Obnov geo FAB + znovu zobraz geo marker
   document.getElementById('fab-geo')?.classList.remove('nav-taking-over');
+  document.body.classList.remove('nav-on');  // nav-on pryč PŘED showGeoVisuals
   if (typeof showGeoVisuals === 'function') showGeoVisuals();
-  document.body.classList.remove('nav-on');
   if (typeof map.setBearing === 'function') map.setBearing(0);
   document.body.classList.remove('map-rotated');
   const lbl=document.getElementById('nav-pick-lbl'); if(lbl) lbl.textContent='Vybrat cíl na mapě';

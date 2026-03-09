@@ -189,6 +189,7 @@ let _geoWatchId   = null;   // watchPosition ID pro live update
 let _geoMarker    = null;   // modrý tečkový marker
 let _geoCircle    = null;   // přesnostní kruh
 let _geoActive    = false;
+let _geoFirstFix  = false;   // pro jednorázovou zelenou hlášku
 let _geoLatLng    = null;   // { lat, lng } — poslední poloha
 let _bestAccuracy = Infinity;
 let _geoSettleTimer = null;
@@ -207,6 +208,7 @@ function geolocate() {
   }
 
   btn?.classList.add('on');
+  _geoFirstFix = false;
   badge('📍 Zjišťování polohy…');
 
   // watchPosition — browser posílá aktualizace jak se poloha zpřesňuje
@@ -232,18 +234,24 @@ function _onGeoUpdate(pos) {
   _geoActive    = true;
   _bestAccuracy = Math.min(_bestAccuracy, acc);
 
-  // Během navigace skrývám geo marker — nav.js má vlastní position marker
+  // První fix — zelená hláška
+  if (!_geoFirstFix) {
+    _geoFirstFix = true;
+    badge('✅ Poloha zjištěna', 'ok');
+  }
+
+  // Geo marker jen mimo navigaci — nav.js má vlastní position marker
   if (!document.body.classList.contains('nav-on')) {
     _updateGeoMarker(lat, lng, acc);
   }
 
   // Zobraz nav tlačítko při prvním fixu
   document.getElementById('nav-pick-btn')?.classList.add('on');
-
-  // Zpřesňování polohy je tiché — žádné badge, žádné hlášky
 }
 
 function _updateGeoMarker(lat, lng, acc) {
+  // Dvojitá pojistka: nikdy nevykresli geo marker během navigace
+  if (document.body.classList.contains('nav-on')) return;
   const accR = Math.min(acc, 200); // nezobrazuj obří kruhy
 
   if (!_geoMarker) {
@@ -289,10 +297,16 @@ function hideGeoVisuals() {
 // Obnov geo marker + kruh po ukončení navigace
 function showGeoVisuals() {
   if (!_geoActive || !_geoLatLng) return;
-  // Krátký delay — nav-on třída se odstraní těsně předtím, marker se zobrazí správně
+  // Delay 180ms — nav-on musí být pryč dříve než zobrazíme marker
+  // Guard uvnitř: clearNav() voláno i z _startNav, tam nav-on přibyde znovu
   setTimeout(() => {
-    if (_geoLatLng) _updateGeoMarker(_geoLatLng.lat, _geoLatLng.lng, _bestAccuracy < Infinity ? _bestAccuracy : 25);
-  }, 100);
+    if (_geoLatLng && !document.body.classList.contains('nav-on')) {
+      // Ujisti se, že starý marker je odstraněn (hideGeoVisuals ho smazal)
+      _geoMarker = null; _geoCircle = null;
+      _updateGeoMarker(_geoLatLng.lat, _geoLatLng.lng,
+        _bestAccuracy < Infinity ? _bestAccuracy : 25);
+    }
+  }, 180);
 }
 
 function _stopGeo() {
@@ -318,13 +332,20 @@ function getGeoLatLng() {
 //  BADGE + LOADING
 // ════════════════════════════════════════════════════════════════
 let _badgeTimer;
-function badge(msg) {
+function badge(msg, variant) {
   const el = document.getElementById('dbadge');
   if (!el) return;
   el.textContent = msg;
-  el.classList.remove('fade');
+  el.classList.remove('fade', 'badge-ok');
+  if (variant === 'ok') el.classList.add('badge-ok');
   clearTimeout(_badgeTimer);
-  _badgeTimer = setTimeout(() => el.classList.add('fade'), 5000);
+  // OK badge zmizí rychleji — 3 s
+  const delay = variant === 'ok' ? 3000 : 5000;
+  _badgeTimer = setTimeout(() => {
+    el.classList.add('fade');
+    // Po fade odeber badge-ok třídu
+    setTimeout(() => el.classList.remove('badge-ok'), 1300);
+  }, delay);
 }
 function ld(msg) {
   const el = document.getElementById('ld-sub');
