@@ -25,6 +25,7 @@ let _trackWatchId = null, _trackTarget = null;
 let _remDist = 0, _avgSpeedMS = 13.9;
 let _followMode = false, _lastHeading = null, _mapMoved = false, _lastValidHdg = 0;
 let _navStartTime = null, _navTotalDist = 0;  // statistiky pro arrival modal
+let _bearingLock = false;   // rotace mapy ve směru jízdy
 const _ZOOM_NAV = 17;
 
 // ════════════════════════════════════════════════════════════════
@@ -170,9 +171,35 @@ function resetMapBearing() {
   if (typeof map.setBearing === 'function') {
     map.setBearing(0, { animate: true, duration: 0.4 });
   }
-  // Ihned skryj tlačítko bez čekání na rotate event z animace
+  // Ihned spusť fade-out třídu — CSS transition dokončí zbytek
   document.body.classList.remove('map-rotated');
+  document.body.classList.add('map-north-fade');
+  setTimeout(() => document.body.classList.remove('map-north-fade'), 600);
   _updateNorthFabIcon(0);
+}
+
+// ── Kompas v nav widgetu — toggle bearing lock ───────────────────
+// Jedno kliknutí = zamknutí mapy ve směru jízdy (mapa se otáčí s headingem)
+// Druhé kliknutí = srovnání mapy na sever a vypnutí zámku
+function toggleNavCompass() {
+  _bearingLock = !_bearingLock;
+  document.getElementById('nav-persp-btn')?.classList.toggle('persp-on', _bearingLock);
+  document.getElementById('nav-persp-btn')?.setAttribute('title',
+    _bearingLock ? 'Otáčení: zapnuto — klikni pro srovnání na sever' : 'Zapnout otáčení mapy');
+
+  if (_bearingLock) {
+    // Okamžitě aplikuj aktuální heading
+    if (typeof map.setBearing === 'function') {
+      map.setBearing(_lastValidHdg, { animate: true, duration: 0.4 });
+    }
+  } else {
+    // Vypni → srovnej na sever
+    if (typeof map.setBearing === 'function') {
+      map.setBearing(0, { animate: true, duration: 0.4 });
+    }
+    document.body.classList.remove('map-rotated');
+    _updateNorthFabIcon(0);
+  }
 }
 
 // Zobraz/skryj north-reset FAB + rotuj jeho ikonu
@@ -507,22 +534,20 @@ function _buildNavMarkerIcon(hdgDeg, mode) {
       className: '', iconSize: [36,52], iconAnchor: [18,26],
     });
   } else {
-    // Chodec — pohled přímo shora: hlava (kolečko), ramena, trup, špičky bot
+    // Chodec — pouze hlava (kolečko), střed = poloha uživatele
     return L.divIcon({
-      html:`<div class="nav-pos-marker" style="transform:rotate(${rot}deg);transform-origin:50% 50%;width:28px;height:44px">
+      html:`<div class="nav-pos-marker" style="transform:rotate(${rot}deg);transform-origin:50% 50%;width:28px;height:28px">
 <svg viewBox="0 0 28 28" width="28" height="28" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <filter id="ws"><feDropShadow dx="0" dy="1.5" stdDeviation="2" flood-color="#065f46" flood-opacity=".55"/></filter>
+    <filter id="ws"><feDropShadow dx="0" dy="1.5" stdDeviation="2.5" flood-color="#065f46" flood-opacity=".6"/></filter>
     <linearGradient id="wg" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0%"   stop-color="#34d399"/>
       <stop offset="100%" stop-color="#059669"/>
     </linearGradient>
   </defs>
-  <!-- Hlava — kolečko (vrchol = směr jízdy) -->
   <circle cx="14" cy="14" r="12" fill="url(#wg)" filter="url(#ws)"/>
-  <circle cx="14" cy="14" r="12" fill="none" stroke="rgba(255,255,255,.35)" stroke-width="1.5"/>
-  <!-- Odlesk -->
-  <ellipse cx="10" cy="10" rx="4" ry="3.2" fill="rgba(255,255,255,.28)"/>
+  <circle cx="14" cy="14" r="12" fill="none" stroke="rgba(255,255,255,.4)" stroke-width="1.5"/>
+  <ellipse cx="11" cy="11" rx="4" ry="3" fill="rgba(255,255,255,.3)"/>
 </svg></div>`,
       className: '', iconSize: [28,28], iconAnchor: [14,14],
     });
@@ -605,6 +630,11 @@ function _onTrack(pos) {
   _updatePosMarker(lat,lng,heading);
   _updateHeadingCone(lat,lng,heading);
 
+  // Bearing lock — mapa se otáčí ve směru jízdy
+  if (_bearingLock && typeof map.setBearing === 'function') {
+    map.setBearing(heading, { animate: false });
+  }
+
   if(_followMode) map.setView([lat,lng],Math.max(map.getZoom(),_ZOOM_NAV),{animate:true,duration:0.4});
 
   // Cíl
@@ -657,7 +687,7 @@ function clearNav() {
   _stopTracking();
   _navActive=false; _followMode=false; _navMode=null;
   _fetchedDriveRoute=_fetchedWalkRoute=_fetchedTarget=null;
-  _lastValidHdg=0; _lastHeading=null;
+  _lastValidHdg=0; _lastHeading=null; _bearingLock=false;
   _navStartTime=null; _navTotalDist=0;
   _updateCompassIcon(0);
   _removeHeadingCone();

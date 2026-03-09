@@ -465,7 +465,10 @@ body.nav-on #dbadge { display: none !important; }
   flex: 0 0 32px; padding: 4px;
 }
 .nav-act-compass.persp-on {
-  background: rgba(124,58,237,.15); border-color: var(--acc2); color: var(--acc2);
+  background: rgba(16,185,129,.18); border-color: #10b981; color: #10b981;
+}
+.nav-act-compass.persp-on #nav-compass-svg {
+  filter: drop-shadow(0 0 4px #10b98188);
 }
 /* Kompas SVG rotace — animuje se plynule při změně headingu */
 #nav-compass-svg {
@@ -613,9 +616,9 @@ body.nav-on #dbadge { display: none !important; }
 #fab-nav        { display: none; background: rgba(14,165,233,.15); border-color: var(--acc3); color: var(--acc3); }
 #fab-nav.on     { display: flex; }
 /* North-reset: normálně skrytý, zobrazí se gdy je mapa otočená */
-#fab-north        { display: none; border-color: var(--acc3); color: var(--acc3); }
+#fab-north        { opacity: 0; pointer-events: none; border-color: var(--acc3); color: var(--acc3); transition: opacity 0.45s ease; }
 #fab-north-svg    { transition: transform 0.3s ease; }
-body.map-rotated #fab-north { display: flex; animation: fadeIn .2s ease; }
+body.map-rotated #fab-north { opacity: 1; pointer-events: auto; animation: fadeIn .2s ease; }
 
 /* ════════════════════════════════════════════════════════════════
    MĚŘICÍ PANEL
