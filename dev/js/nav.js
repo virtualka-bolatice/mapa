@@ -165,12 +165,14 @@ function _updateNorthFabIcon(bearingDeg) {
 }
 
 // ── Reset mapy na sever — POUZE reset, žádný lock ───────────────
-// Kliknutí: mapa se vrátí na sever s animací, tlačítko zmizí
+// Kliknutí: mapa se vrátí na sever s animací, tlačítko ihned zmizí
 function resetMapBearing() {
   if (typeof map.setBearing === 'function') {
     map.setBearing(0, { animate: true, duration: 0.4 });
   }
-  // Po animaci tlačítko zmizí samo přes _syncNorthBtn (map-rotated třída)
+  // Ihned skryj tlačítko bez čekání na rotate event z animace
+  document.body.classList.remove('map-rotated');
+  _updateNorthFabIcon(0);
 }
 
 // Zobraz/skryj north-reset FAB + rotuj jeho ikonu
@@ -322,7 +324,6 @@ async function _startNav(tLat,tLng,tName,mode,driveRoute,walkRoute) {
   const _wr=(walkRoute??_fetchedWalkRoute)??null;
   clearNav();
   _navMode=mode; _coneVisible=true;
-  if(typeof hideGeoVisuals==='function') hideGeoVisuals();
   const route=mode==='driving'?_dr:_wr;
   if(!route){badge('❌ Trasa nenalezena — vyber cíl znovu');return;}
   const coords=_geoToLatLng(route.geometry);
@@ -350,8 +351,8 @@ async function _startNav(tLat,tLng,tName,mode,driveRoute,walkRoute) {
   _navActive=true;
   _navStartTime = Date.now();
   _navTotalDist = dist;
-  // VŽDY skryj geo vizuály — marker + přesnostní kruh — navigace přebírá polohu
-  if (typeof hideGeoVisuals === 'function') hideGeoVisuals();
+  // Kompletně deaktivuj "Moje poloha" — navigace přebírá sledování polohy
+  if (typeof deactivateGeoForNav === 'function') deactivateGeoForNav();
   if (typeof navRemoveHeadingCone === 'function') navRemoveHeadingCone();
   try{map.fitBounds(L.latLngBounds(coords).pad(.12));}catch(e){}
   _setFollow(true);
@@ -359,8 +360,6 @@ async function _startNav(tLat,tLng,tName,mode,driveRoute,walkRoute) {
   _startTracking(tLat,tLng,tName);
   document.getElementById('fab-nav')?.classList.add('on');
   document.getElementById('nav-persp-btn')?.classList.add('persp-on');
-  // Geo FAB zašedí — navigace přebírá tracking
-  document.getElementById('fab-geo')?.classList.add('nav-taking-over');
 }
 
 // Z POI popupu
@@ -474,8 +473,6 @@ function _buildNavMarkerIcon(hdgDeg, mode) {
       <stop offset="100%" stop-color="#1d4ed8"/>
     </linearGradient>
   </defs>
-  <!-- stín -->
-  <ellipse cx="18" cy="49" rx="11" ry="2.8" fill="rgba(0,0,0,.30)"/>
   <!-- karoserie základna -->
   <path d="M5,14 Q5,6 13,5 L23,5 Q31,6 31,14 L31,40 Q31,46 23,46 L13,46 Q5,46 5,40 Z"
         fill="url(#cg)" filter="url(#cs)"/>
@@ -506,42 +503,44 @@ function _buildNavMarkerIcon(hdgDeg, mode) {
   <!-- obrys blysk -->
   <path d="M5,14 Q5,6 13,5 L23,5 Q31,6 31,14 L31,40 Q31,46 23,46 L13,46 Q5,46 5,40 Z"
         fill="none" stroke="rgba(255,255,255,.30)" stroke-width="1"/>
-  <!-- šipka směru — bílá nahoru -->
-  <polygon points="18,0 23,6.5 13,6.5" fill="white" opacity=".95"/>
 </svg></div>`,
       className: '', iconSize: [36,52], iconAnchor: [18,26],
     });
   } else {
-    // Chodec — hlava + ramena, výrazná zelená
+    // Chodec — pohled přímo shora: hlava (kolečko), ramena, trup, špičky bot
     return L.divIcon({
-      html:`<div class="nav-pos-marker" style="transform:rotate(${rot}deg);transform-origin:50% 50%;width:30px;height:44px">
-<svg viewBox="0 0 30 44" width="30" height="44" xmlns="http://www.w3.org/2000/svg">
+      html:`<div class="nav-pos-marker" style="transform:rotate(${rot}deg);transform-origin:50% 50%;width:28px;height:44px">
+<svg viewBox="0 0 28 44" width="28" height="44" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <filter id="ws"><feDropShadow dx="0" dy="2" stdDeviation="2.5" flood-color="#065f46" flood-opacity=".55"/></filter>
+    <filter id="ws"><feDropShadow dx="0" dy="1.5" stdDeviation="2" flood-color="#065f46" flood-opacity=".55"/></filter>
     <linearGradient id="wg" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0%"   stop-color="#34d399"/>
       <stop offset="100%" stop-color="#059669"/>
     </linearGradient>
   </defs>
-  <!-- stín -->
-  <ellipse cx="15" cy="41.5" rx="9" ry="2.5" fill="rgba(0,0,0,.28)"/>
-  <!-- trup (ramena + hruď) -->
-  <path d="M4,26 Q4,19 15,18 Q26,19 26,26 L26,38 Q26,41 23,41 L7,41 Q4,41 4,38 Z"
-        fill="url(#wg)" filter="url(#ws)"/>
-  <!-- highlight na ramenou -->
-  <ellipse cx="15" cy="21" rx="9" ry="4.5" fill="rgba(255,255,255,.18)"/>
-  <!-- krk -->
-  <rect x="12.5" y="15" width="5" height="4" rx="2" fill="#34d399"/>
-  <!-- hlava -->
-  <circle cx="15" cy="11" r="8.5" fill="url(#wg)" filter="url(#ws)"/>
-  <!-- obličej highlight -->
-  <ellipse cx="12" cy="9" rx="3.5" ry="3" fill="rgba(255,255,255,.22)"/>
-  <!-- obrys hlavy -->
-  <circle cx="15" cy="11" r="8.5" fill="none" stroke="rgba(255,255,255,.28)" stroke-width="1"/>
-  <!-- šipka směru — nahoru (nad hlavou) -->
-  <polygon points="15,0 20,4.5 10,4.5" fill="white" opacity=".95"/>
+  <!-- Stín pod figurou -->
+  <ellipse cx="14" cy="42.5" rx="9.5" ry="1.8" fill="rgba(0,0,0,.22)"/>
+  <!-- Levá špička boty -->
+  <ellipse cx="10" cy="37" rx="3.2" ry="4.2" fill="#1e293b" transform="rotate(-6,10,37)"/>
+  <!-- Pravá špička boty -->
+  <ellipse cx="18" cy="37" rx="3.2" ry="4.2" fill="#1e293b" transform="rotate(6,18,37)"/>
+  <!-- Levá noha -->
+  <ellipse cx="10" cy="28" rx="3" ry="5.5" fill="#059669"/>
+  <!-- Pravá noha -->
+  <ellipse cx="18" cy="28" rx="3" ry="5.5" fill="#059669"/>
+  <!-- Levá paže -->
+  <ellipse cx="4.5" cy="19.5" rx="2.4" ry="5.5" fill="#10b981" transform="rotate(-18,4.5,19.5)"/>
+  <!-- Pravá paže -->
+  <ellipse cx="23.5" cy="19.5" rx="2.4" ry="5.5" fill="#10b981" transform="rotate(18,23.5,19.5)"/>
+  <!-- Trup -->
+  <ellipse cx="14" cy="19" rx="7" ry="9" fill="url(#wg)" filter="url(#ws)"/>
+  <!-- Hlava — kolečko (vrchol = směr jízdy) -->
+  <circle cx="14" cy="8" r="7.8" fill="url(#wg)" filter="url(#ws)"/>
+  <circle cx="14" cy="8" r="7.8" fill="none" stroke="rgba(255,255,255,.35)" stroke-width="1.2"/>
+  <!-- Odlesk na hlavě -->
+  <ellipse cx="11" cy="5.5" rx="3.2" ry="2.6" fill="rgba(255,255,255,.28)"/>
 </svg></div>`,
-      className: '', iconSize: [30,44], iconAnchor: [15,22],
+      className: '', iconSize: [28,44], iconAnchor: [14,22],
     });
   }
 }
@@ -694,8 +693,8 @@ function clearNav() {
   document.getElementById('nav-pick-btn')?.classList.remove('pick-active');
   document.getElementById('nav-follow-btn')?.classList.remove('follow-on');
   document.getElementById('nav-persp-btn')?.classList.remove('persp-on');
-  // Obnov geo FAB do normálního stavu
-  document.getElementById('fab-geo')?.classList.remove('nav-taking-over');
+  // Obnov "Moje poloha" tlačítko
+  if (typeof reactivateGeoAfterNav === 'function') reactivateGeoAfterNav();
   document.body.classList.remove('nav-on');
   if (typeof map.setBearing === 'function') map.setBearing(0);
   document.body.classList.remove('map-rotated');

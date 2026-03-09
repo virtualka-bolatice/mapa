@@ -207,7 +207,7 @@ function geolocate() {
   }
 
   btn?.classList.add('on');
-  // Žádný badge — zpřesňování probíhá tiše v pozadí
+  badge('📍 Zjišťování polohy…');
 
   // watchPosition — browser posílá aktualizace jak se poloha zpřesňuje
   _geoWatchId = navigator.geolocation.watchPosition(
@@ -300,6 +300,34 @@ function _stopGeo() {
 function getGeoLatLng() {
   if (!_geoLatLng) return null;
   return L.latLng(_geoLatLng.lat, _geoLatLng.lng);
+}
+
+// ── GEO — deaktivace pro navigaci ────────────────────────────────
+// Navigace přebírá sledování polohy — "Moje poloha" se kompletně vypne
+function deactivateGeoForNav() {
+  if (_geoWatchId !== null) {
+    navigator.geolocation.clearWatch(_geoWatchId);
+    _geoWatchId = null;
+  }
+  clearTimeout(_geoSettleTimer);
+  hideGeoVisuals();
+  _geoActive    = false;
+  _bestAccuracy = Infinity;
+  const btn = document.getElementById('fab-geo');
+  if (btn) {
+    btn.classList.remove('on');
+    btn.style.display = 'none';   // úplně skryj po dobu navigace
+  }
+}
+
+// Obnov "Moje poloha" tlačítko po ukončení navigace
+function reactivateGeoAfterNav() {
+  const btn = document.getElementById('fab-geo');
+  if (btn) {
+    btn.style.display = '';
+    btn.classList.remove('on', 'nav-taking-over', 'geo-nav-disabled');
+  }
+  // _geoLatLng zachováme — znám poslední poloha pro případ nové navigace
 }
 
 // ════════════════════════════════════════════════════════════════
