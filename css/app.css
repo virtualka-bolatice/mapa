@@ -5,6 +5,9 @@
 /* ── DESIGN SYSTEM ── */
 :root {
   --bg:      #0d1117;
+  /* iOS safe area insets */
+  --safe-b:  env(safe-area-inset-bottom, 0px);
+  --safe-t:  env(safe-area-inset-top, 0px);
   --surface: #161b27;
   --surf2:   #1e2436;
   --surf3:   #252c42;
@@ -27,6 +30,7 @@
   --sh: 0 4px 24px rgba(0,0,0,.65);
   --sh2: 0 2px 10px rgba(0,0,0,.4);
   --mob-peek: 105px;  /* výška peek části mobilního bottom sheetu */
+  --mob-peek-safe: calc(105px + env(safe-area-inset-bottom, 0px));  /* iPhone notch */
   --hdr: 50px;        /* výška headeru */
 }
 
@@ -844,7 +848,7 @@ body:not(.is-mobile) #poi-overview.poi-ov-ready { display: flex; }
   #nav-widget { left: 8px; right: auto; top: calc(var(--hdr) + 8px); }
 
   /* FABs nad bottom sheet */
-  #fab-col { bottom: calc(var(--mob-peek) + 12px); right: 10px; }
+  #fab-col { bottom: calc(var(--mob-peek) + 12px + env(safe-area-inset-bottom, 0px)); right: 10px; }
 
   /* Měřicí panel — přizpůsobený portrait mobilu, bez zalomení textů */
   #msr-panel {
@@ -872,7 +876,7 @@ body:not(.is-mobile) #poi-overview.poi-ov-ready { display: flex; }
 
   /* Scale — nad BS peekem, vlevo, jemné */
   .leaflet-bottom.leaflet-left {
-    bottom: calc(var(--mob-peek) + 6px) !important;
+    bottom: calc(var(--mob-peek) + 6px + env(safe-area-inset-bottom, 0px)) !important;
     left: 10px !important;
     margin-left: 0 !important;
   }
