@@ -148,6 +148,8 @@ function toggleSB() {
   // Landscape: body class mění CSS var --ml → všechny map elementy se přesunou plynule
   if (isLandscapeMob()) {
     document.body.classList.toggle('ls-sb-closed', !sbOpen);
+    // Polyfill: animovat --ml přes JS pro starší iOS/Android bez @property podpory
+    _animateML(sbOpen ? 210 : 0);
     // Po ukončení CSS přechodu (.28s) nech Leaflet překreslit dlaždice pro novou velikost
     setTimeout(() => {
       if (typeof map !== 'undefined' && map.invalidateSize) {
@@ -158,6 +160,7 @@ function toggleSB() {
   const h = document.getElementById('sb-handle');
   if (h) { h.classList.toggle('closed', !sbOpen); h.textContent = sbOpen ? '◀' : '▶'; }
   document.getElementById('sb-hbtn')?.classList.toggle('on', sbOpen);
+  document.getElementById('sb-hbtn-ls')?.classList.toggle('on', sbOpen);
   updateLayoutPositions();
 }
 
@@ -456,3 +459,29 @@ window.addEventListener('resize', () => {
     if (bs) { bs.style.transform = ''; bs.style.transition = ''; }
   }
 });
+
+// ── --ml POLYFILL ANIMACE ────────────────────────────────────────
+// Zajistí pohyb prvků mapy i na iOS < 16.4 a Android Chrome < 111
+// kde @property není podporován.
+let _mlAnimFrame = null;
+function _animateML(targetPx) {
+  // Pokud @property funguje, CSS transition se postará sama
+  // JS animace slouží jako záloha
+  const duration = 280; // ms — shodné s CSS transition
+  const start    = performance.now();
+  const from     = parseFloat(
+    getComputedStyle(document.documentElement).getPropertyValue('--ml') || '0'
+  ) || (targetPx === 0 ? 210 : 0);
+
+  if (_mlAnimFrame) cancelAnimationFrame(_mlAnimFrame);
+
+  function step(now) {
+    const t = Math.min((now - start) / duration, 1);
+    // ease: cubic-bezier(.4,0,.2,1) aproximace
+    const ease = t < .5 ? 2*t*t : -1+(4-2*t)*t;
+    const val  = from + (targetPx - from) * ease;
+    document.documentElement.style.setProperty('--ml', val.toFixed(1) + 'px');
+    if (t < 1) _mlAnimFrame = requestAnimationFrame(step);
+  }
+  _mlAnimFrame = requestAnimationFrame(step);
+}
