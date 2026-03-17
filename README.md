@@ -36,7 +36,7 @@ js/
   nav.js
   ui.js
   measure.js
-data/               ← exporty z qgis2web + GeoJSON bodů zájmu
+data/               ← exporty z qgis2web
 foto/               ← fotografie POI
 ```
 
