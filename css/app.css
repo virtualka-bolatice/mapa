@@ -30,11 +30,13 @@
   --sh: 0 4px 24px rgba(0,0,0,.65);
   --sh2: 0 2px 10px rgba(0,0,0,.4);
   --mob-peek: 105px;  /* výška peek části mobilního bottom sheetu */
+  --mob-peek-safe: calc(105px + env(safe-area-inset-bottom, 0px));
   --mob-peek-safe: calc(105px + env(safe-area-inset-bottom, 0px));  /* iPhone notch */
   --hdr: 50px;        /* výška headeru */
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+button, [role="button"] { touch-action: manipulation; cursor: pointer; }
 html, body {
   height: 100%;
   font-family: 'DM Sans', sans-serif;
@@ -593,11 +595,12 @@ body.nav-on #dbadge { display: none !important; }
   z-index: 900; display: flex; flex-direction: column; gap: 6px; align-items: center;
 }
 .fab {
-  width: 32px; height: 32px; border-radius: 7px;
+  width: 36px; height: 36px; border-radius: 8px;
   border: 1px solid var(--border); background: var(--surface);
-  color: var(--muted); cursor: pointer; font-size: .84rem;
+  color: var(--muted); cursor: pointer; font-size: .88rem;
   display: flex; align-items: center; justify-content: center;
   box-shadow: var(--sh2); transition: all .18s; flex-shrink: 0;
+  touch-action: manipulation;
 }
 .fab:hover      { background: var(--surf2); color: var(--text); }
 .fab.on         { color: #fff; }
@@ -821,9 +824,10 @@ body:not(.is-mobile) #poi-overview.poi-ov-ready { display: flex; }
   /* Mobilní kategorie ikony */
   .mob-cat-ico {
     display: flex; flex-direction: column; align-items: center;
-    gap: 3px; cursor: pointer; flex-shrink: 0; min-width: 48px;
-    padding: 4px 6px; border-radius: 10px; transition: all .18s;
+    gap: 3px; cursor: pointer; flex-shrink: 0; min-width: 52px;
+    padding: 6px 6px; border-radius: 10px; transition: all .18s;
     border: 1.5px solid transparent;
+    touch-action: manipulation;
   }
   .mob-cat-ico.active { border-color: var(--cat-color, #3b82f6); background: rgba(var(--cat-rgb, 59,130,246),.1); }
   .mob-cat-ico.dimmed { opacity: .35; }
@@ -969,7 +973,7 @@ body:not(.is-mobile) #poi-overview.poi-ov-ready { display: flex; }
      ══════════════════════════════════════════════════════════════ */
   :root {
     --hdr:   38px;
-    --ls-sw: 210px;
+    --ls-sw: 220px;  /* wider for modern large phones */
     --ml:    var(--ls-sw);   /* výchozí: sidebar otevřený */
     transition: --ml .28s cubic-bezier(.4,0,.2,1);
   }
@@ -1021,13 +1025,16 @@ body:not(.is-mobile) #poi-overview.poi-ov-ready { display: flex; }
     width: var(--ls-sw) !important;
     max-height: none !important;
     height: 100vh !important;
+    height: 100dvh !important;
     border-right: 1px solid var(--border) !important;
     border-top: none !important;
     border-radius: 0 !important;
     transform: none !important;
     transition: transform .28s cubic-bezier(.4,0,.2,1) !important;
-    overflow-y: auto !important;
+    overflow-y: hidden !important;    /* flex handles scroll */
     overflow-x: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
     /* Zajistí pokrytí gapů při animaci — žádný černý flash */
     background: var(--surface) !important;
     z-index: 500 !important;
@@ -1037,6 +1044,14 @@ body:not(.is-mobile) #poi-overview.poi-ov-ready { display: flex; }
   /* Zavřený sidebar: sjede doleva */
   #sidebar.closed {
     transform: translateX(-100%) !important;
+  }
+  /* sb-scroll: flex:1 = vyplní zbývající výšku mezi scrollem a bottom barem */
+  #sb-scroll {
+    flex: 1 !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
   }
 
   /* Drag pill — skrytý */
@@ -1155,22 +1170,28 @@ body:not(.is-mobile) #poi-overview.poi-ov-ready { display: flex; }
   .ls-only { display: flex !important; }
   #ls-bottom-bar {
     display: flex !important; align-items: center; gap: 6px;
-    padding: 6px 8px; flex-shrink: 0;
+    padding: 6px 8px;
+    padding-bottom: max(6px, env(safe-area-inset-bottom, 6px));
+    flex-shrink: 0 !important;
+    flex-grow: 0 !important;
     border-top: 1px solid var(--border); background: var(--surface);
     -webkit-tap-highlight-color: transparent;
+    min-height: 44px;
   }
   #ls-adv-btn {
-    width: 28px; height: 28px; padding: 0; flex-shrink: 0;
-    border: 1px solid var(--border); border-radius: 6px;
-    background: var(--surf2); color: var(--muted); font-size: .88rem; cursor: pointer;
+    width: 36px; height: 36px; padding: 0; flex-shrink: 0;
+    border: 1px solid var(--border); border-radius: 7px;
+    background: var(--surf2); color: var(--muted); font-size: .92rem; cursor: pointer;
     transition: all .15s;
+    touch-action: manipulation;
   }
   body.adv-on #ls-adv-btn { border-color: var(--acc2); color: var(--acc2); background: rgba(124,58,237,.12); }
   #ls-tile-btn {
-    flex: 1; height: 28px; padding: 0 8px;
-    border: 1px solid var(--border); border-radius: 6px;
-    background: var(--surf2); color: var(--text); font-size: .65rem;
+    flex: 1; height: 36px; padding: 0 10px;
+    border: 1px solid var(--border); border-radius: 7px;
+    background: var(--surf2); color: var(--text); font-size: .68rem;
     cursor: pointer; white-space: nowrap; transition: all .15s; font-family: inherit;
+    touch-action: manipulation;
   }
   #ls-tile-btn:hover { border-color: var(--acc2); color: var(--acc2); }
 
