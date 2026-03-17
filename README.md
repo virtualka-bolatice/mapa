@@ -48,7 +48,7 @@ foto/               ← fotografie POI
 
 | Akce | Ovládání |
 |------|----------|
-| Posun | Klik a tažení |
+| Posun | Klik a tažení nebo šipkami na klávesnici |
 | Přiblížení / oddálení | `Scroll` nebo tlačítka `+` / `−` (vpravo dole) |
 | Přiblížení na oblast | `Shift` + tažení — vykreslí výběrový obdélník |
 | Rotace mapy | `Shift` + tažení pravým tlačítkem myši |
