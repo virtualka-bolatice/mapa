@@ -4,6 +4,20 @@
 //  poi.js — POI systém
 // ════════════════════════════════════════════════════════════════
 
+const DEMO_POI = { "type": "FeatureCollection", "features": [
+  { "type": "Feature", "geometry": { "type": "Point", "coordinates": [17.9655, 49.9201] }, "properties": { "nazev": "Obecní úřad Bolatice", "kategorie": "urad", "podkategorie": "urad_obec", "typ": "Obecní úřad", "adresa": "Hlučínská 95", "tel": "+420 553 653 802", "web": "https://www.bolatice.cz", "provoz": "Po,St 7:30–17:00" }},
+  { "type": "Feature", "geometry": { "type": "Point", "coordinates": [17.9641, 49.9195] }, "properties": { "nazev": "Restaurace Na Radnici", "kategorie": "gastro", "podkategorie": "restaurace", "adresa": "Náměstí 12", "tel": "+420 601 111 222", "provoz": "Po–Ne 11:00–22:00" }},
+  { "type": "Feature", "geometry": { "type": "Point", "coordinates": [17.9670, 49.9215] }, "properties": { "nazev": "Pizzeria Roma", "kategorie": "gastro", "podkategorie": "pizzeria", "adresa": "Hlučínská 22", "tel": "+420 602 333 444" }},
+  { "type": "Feature", "geometry": { "type": "Point", "coordinates": [17.9635, 49.9220] }, "properties": { "nazev": "TJ Bolatice – hřiště", "kategorie": "sport", "podkategorie": "sport_ven", "adresa": "Sportovní 5", "popis": "Travnaté + umělé hřiště" }},
+  { "type": "Feature", "geometry": { "type": "Point", "coordinates": [17.9680, 49.9185] }, "properties": { "nazev": "Kadeřnictví Jana", "kategorie": "sluzby", "podkategorie": "kadernictvi", "adresa": "Opavská 8", "tel": "+420 604 777 888", "provoz": "Po–Pá 8:00–17:00" }},
+  { "type": "Feature", "geometry": { "type": "Point", "coordinates": [17.9660, 49.9230] }, "properties": { "nazev": "Lékárna Bolatice", "kategorie": "zdravi", "podkategorie": "lekarna", "adresa": "Hlučínská 55", "tel": "+420 553 123 456", "provoz": "Po–Pá 7:30–16:30" }},
+  { "type": "Feature", "geometry": { "type": "Point", "coordinates": [17.9645, 49.9208] }, "properties": { "nazev": "Penny Market", "kategorie": "obchod", "podkategorie": "potraviny", "adresa": "Opavská 33", "web": "https://www.penny.cz", "provoz": "Po–Ne 7:00–21:00" }},
+  { "type": "Feature", "geometry": { "type": "Point", "coordinates": [17.9700, 49.9200] }, "properties": { "nazev": "ZŠ Bolatice", "kategorie": "urad", "podkategorie": "skola", "adresa": "Školní 1", "tel": "+420 553 653 900", "web": "https://www.zsbolatice.cz" }},
+  { "type": "Feature", "geometry": { "type": "Point", "coordinates": [17.9630, 49.9185] }, "properties": { "nazev": "MUDr. Kovářová", "kategorie": "zdravi", "podkategorie": "lekar", "typ": "Praktický lékař", "adresa": "Hlučínská 12", "tel": "+420 553 654 100", "provoz": "Po,St,Pá 7:30–12:00" }},
+  { "type": "Feature", "geometry": { "type": "Point", "coordinates": [17.9665, 49.9195] }, "properties": { "nazev": "Hospoda u Petra", "kategorie": "gastro", "podkategorie": "hospoda", "adresa": "Náměstí 5", "tel": "+420 607 888 999", "provoz": "Po–Pá 14:00–23:00" }},
+  { "type": "Feature", "geometry": { "type": "Point", "coordinates": [17.9672, 49.9202] }, "properties": { "nazev": "Kostel sv. Martina", "kategorie": "urad", "podkategorie": "cirkev", "adresa": "Kostelní 1", "popis": "Původ 13. stol., románský portál", "foto": "foto/kostel.jpg" }},
+]};
+
 // ── STAV APLIKACE ────────────────────────────────────────────────
 const poiGroup = L.featureGroup().addTo(map);
 
@@ -17,86 +31,52 @@ const ST = {
 };
 Object.keys(CAT_CFG).forEach(k => ST.catActive[k] = true);
 
-// ── NORMALIZACE ATRIBUTŮ Z QGIS EXPORTU ─────────────────────────
-// Sjednotí různá pojmenování sloupců z různých QGIS exportů.
-function _normalizePOIProps(raw) {
-  const idx = {};
-  for (const [k, v] of Object.entries(raw || {})) {
-    const n = k.toLowerCase()
-      .replace(/[áä]/g,'a').replace(/č/g,'c').replace(/ď/g,'d')
-      .replace(/[éě]/g,'e').replace(/í/g,'i').replace(/ň/g,'n')
-      .replace(/[óö]/g,'o').replace(/ř/g,'r').replace(/š/g,'s')
-      .replace(/ť/g,'t').replace(/[úůü]/g,'u').replace(/ý/g,'y')
-      .replace(/ž/g,'z').replace(/[_\s-]+/g,'_');
-    idx[n] = v;
-  }
-  const pick = (...aliases) => {
-    for (const a of aliases) {
-      const v = idx[a.toLowerCase()];
-      // Přeskoč null, undefined, prázdný string a literální "NULL" z QGIS exportu
-      if (v === null || v === undefined || v === '' || v === 'NULL' || v === 'null') continue;
-      return String(v);
-    }
-    return null;
-  };
-  return {
-    nazev:        pick('nazev','name','jmeno','title','nazev_mista','poi_name') || '—',
-    kategorie:    pick('kategorie','category','kat','typ_kategorie') || 'sluzby',
-    podkategorie: pick('podkategorie','subcategory','subkat','podtyp','sub') || 'ostatni',
-    adresa:       pick('adresa','address','ulice','street','umisteni'),
-    tel:          pick('tel','telefon','phone','kontakt','tel_cislo'),
-    web:          pick('web','website','url','www','odkaz'),
-    provoz:       pick('provoz','oteviraci_doba','hours','opening_hours','doba_provozu'),
-    popis:        pick('popis','description','poznamka','note','info'),
-    foto:         pick('foto','photo','image','obrazek','img'),
-    typ:          pick('typ','type','druh','podtyp_nazev'),
-  };
+// ── IKONY ────────────────────────────────────────────────────────
+let _iconSeq = 0;
+function makeIcon(emoji, color, sz = 33) {
+  const s = sz;
+  const fid = 'f' + (++_iconSeq);
+  return L.divIcon({
+    html: `<div class="poi-pin"><svg xmlns="http://www.w3.org/2000/svg" width="${s}" height="${s+8}" viewBox="0 0 ${s} ${s+8}">
+      <defs><filter id="${fid}"><feDropShadow dx="0" dy="2" stdDeviation="2.2" flood-color="${color}" flood-opacity=".5"/></filter></defs>
+      <circle cx="${s/2}" cy="${s/2}" r="${s/2-1.5}" fill="${color}" filter="url(#${fid})" opacity=".97"/>
+      <circle cx="${s/2}" cy="${s/2}" r="${s/2-5.5}" fill="rgba(255,255,255,.14)"/>
+      <text x="${s/2}" y="${s/2+5}" text-anchor="middle" font-size="${Math.round(s*.4)}">${emoji}</text>
+      <line x1="${s/2}" y1="${s-1.5}" x2="${s/2}" y2="${s+7}" stroke="${color}" stroke-width="2" opacity=".5"/>
+    </svg></div>`,
+    className: '', iconSize: [s, s+8], iconAnchor: [s/2, s+8], popupAnchor: [0, -(s+8)],
+  });
 }
 
-// ── NAČTENÍ POI ──────────────────────────────────────────────────
-// Soubor je načten staticky přes <script src="data/POI_0.js"> v index.html.
-// config.js: POI_FILE = 'POI_0.js'  →  window.json_POI_0
-// Po novém exportu z qgis2web: přepis POI_FILE v config.js + script tag v index.html.
+// ── NAČTENÍ DAT ──────────────────────────────────────────────────
 async function loadPOI() {
-  let gj = null;
+  let gj = null, src = '[DEMO]';
 
-  if (typeof POI_FILE !== 'undefined' && POI_FILE) {
-    // Odvoď varName z názvu souboru: POI_0.js → json_POI_0
-    const varName = 'json_' + POI_FILE.replace(/\.js$/i, '');
-    gj = window[varName] || null;
+  for (const path of ['data/bolatice_poi.geojson', 'data/poi.geojson']) {
+    try {
+      const r = await fetch(path);
+      if (r.ok) { gj = await r.json(); src = path; break; }
+    } catch(e) {}
   }
 
-  if (!gj) {
-    console.info('poi.js: POI soubor nenalezen (POI_FILE =', typeof POI_FILE !== 'undefined' ? POI_FILE : 'undefined', ').');
-    ST.features = [];
-    buildSubUI(); renderPOI(); updateCounts(); renderResults(); renderMobSubcats();
-    document.getElementById('st-poi').textContent = '0';
-    return;
-  }
+  if (!gj) gj = DEMO_POI;
 
-  // Sanitizace "NULL" → null z QGIS exportu
-  (gj.features || []).forEach(f => {
-    const p = f.properties || {};
-    Object.keys(p).forEach(k => { if (p[k] === 'NULL' || p[k] === 'null') p[k] = null; });
-  });
+  badge(src === '[DEMO]'
+    ? '📍 Demo data — vytvoř data/bolatice_poi.geojson v QGIS'
+    : `✅ POI načteno: ${src}`);
 
-  // Normalizace atributů — sjednotí různá pojmenování sloupců z QGIS
-  ST.features = (gj.features || [])
-    .filter(f => f.geometry?.type === 'Point' && f.geometry.coordinates)
-    .map(f => ({ ...f, properties: _normalizePOIProps(f.properties) }));
+  ST.features = (gj.features || []).filter(f => f.geometry?.type === 'Point' && f.geometry.coordinates);
 
-  // Inicializace stavů subkategorií
+  // Inicializuj subActive pro VŠECHNY podkategorie na true
+  // (bez tohoto by první klik na toggle nastavil z undefined na true místo false)
   ST.features.forEach(f => {
     const k = f.properties.podkategorie;
     if (k && ST.subActive[k] === undefined) ST.subActive[k] = true;
   });
   Object.entries(CAT_CFG).forEach(([, cat]) => {
-    if (cat.subs) Object.keys(cat.subs).forEach(k => {
-      if (ST.subActive[k] === undefined) ST.subActive[k] = true;
-    });
+    if (cat.subs) Object.keys(cat.subs).forEach(k => { if (ST.subActive[k] === undefined) ST.subActive[k] = true; });
   });
 
-  // Dynamické subkategorie služby
   ST.features.forEach(f => {
     const p = f.properties;
     if (p.kategorie === 'sluzby' && p.podkategorie && !CAT_CFG.sluzby.subs[p.podkategorie]) {
@@ -133,23 +113,6 @@ function toggleSubList() {
 }
 
 // ── RENDEROVÁNÍ ──────────────────────────────────────────────────
-// ── IKONA POI MARKERU ────────────────────────────────────────────
-let _iconSeq = 0;
-function makeIcon(emoji, color, sz = 33) {
-  const s = sz;
-  const fid = 'f' + (++_iconSeq);
-  return L.divIcon({
-    html: `<div class="poi-pin"><svg xmlns="http://www.w3.org/2000/svg" width="${s}" height="${s+8}" viewBox="0 0 ${s} ${s+8}">
-      <defs><filter id="${fid}"><feDropShadow dx="0" dy="2" stdDeviation="2.2" flood-color="${color}" flood-opacity=".5"/></filter></defs>
-      <circle cx="${s/2}" cy="${s/2}" r="${s/2-1.5}" fill="${color}" filter="url(#${fid})" opacity=".97"/>
-      <circle cx="${s/2}" cy="${s/2}" r="${s/2-5.5}" fill="rgba(255,255,255,.14)"/>
-      <text x="${s/2}" y="${s/2+5}" text-anchor="middle" font-size="${Math.round(s*.4)}">${emoji}</text>
-      <line x1="${s/2}" y1="${s-1.5}" x2="${s/2}" y2="${s+7}" stroke="${color}" stroke-width="2" opacity=".5"/>
-    </svg></div>`,
-    className: '', iconSize: [s, s+8], iconAnchor: [s/2, s+8], popupAnchor: [0, -(s+8)],
-  });
-}
-
 function renderPOI() {
   // Standardní cleanup — poiGroup.clearLayers() odstraní všechny markery
   poiGroup.clearLayers();
@@ -196,20 +159,12 @@ function buildPOIPopup(p, color, icon, lat, lng) {
   const foto = p.foto
     ? `<img class="ppop-photo" src="${p.foto}" alt="${p.nazev || ''}"
          onclick="openLB(this.src)"
-         onerror="this.outerHTML='<div class=ppop-ph>${icon}</div>'">`
+         onerror="this.parentNode.innerHTML='<div class=ppop-ph>${icon}</div>'">`
     : '';
 
   let rows = '';
   if (p.adresa) rows += prow('📍', p.adresa);
-  if (p.tel) {
-    // Normalizace tel čísla pro href="tel:…":
-    // číslo bez předvolby (9 číslic) → přidej +420
-    const rawTel = p.tel.replace(/\s/g, '');
-    const dialTel = (rawTel.startsWith('+') || rawTel.startsWith('00'))
-      ? rawTel
-      : '+420' + rawTel;
-    rows += prow('📞', `<a href="tel:${dialTel}">${p.tel}</a>`);
-  }
+  if (p.tel)    rows += prow('📞', `<a href="tel:${p.tel}">${p.tel}</a>`);
   if (p.provoz) rows += prow('🕐', p.provoz);
   if (p.web)    rows += prow('🌐', `<a href="${p.web}" target="_blank">${p.web.replace(/https?:\/\//,'')}</a>`);
   if (p.email)  rows += prow('✉️', `<a href="mailto:${p.email}">${p.email}</a>`);
@@ -279,9 +234,6 @@ function renderPOIOverview(counts) {
         ${cat.icon}<span>${c[k]}</span>
       </span>` : ''
     ).join('')}`;
-
-  // Označit jako připravený — CSS ho zobrazí pouze na desktopu
-  el.classList.add('poi-ov-ready');
 }
 
 // ── MOBILNÍ KATEGORIE IKONY v peek pruhu ─────────────────────────

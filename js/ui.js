@@ -366,10 +366,8 @@ function badge(msg, variant) {
   const delay = variant === 'ok' ? 3000 : 5000;
   _badgeTimer = setTimeout(() => {
     el.classList.add('fade');
-    setTimeout(() => {
-      el.classList.remove('badge-ok', 'fade');
-      el.textContent = '';  // prázdný → :not(:empty) skryje box
-    }, 1300);
+    // Po fade odeber badge-ok třídu
+    setTimeout(() => el.classList.remove('badge-ok'), 1300);
   }, delay);
 }
 function ld(msg) {
@@ -381,20 +379,11 @@ function ld(msg) {
 //  INICIALIZACE
 // ════════════════════════════════════════════════════════════════
 window.addEventListener('load', async () => {
-  // Desktop/mobil class na body — pro CSS cílení
-  function _syncMobileClass() {
-    document.body.classList.toggle('is-mobile', isMobile());
-  }
-  _syncMobileClass();
-  window.addEventListener('resize', _syncMobileClass);
-  ld('Načítám datové vrstvy…');
-  // Načtení všech souborů z DATA_FILES (config.js) přes script tagy
-  if (typeof loadDataFiles === 'function') await loadDataFiles();
+  ld('Registruji IS DMVS vrstvy…');
+  initQGISLayers();
 
-  ld('Načítám data…');
-  try { initQGISLayers(); } catch(e) { console.error('initQGISLayers:', e); }
-
-  try { await loadPOI(); } catch(e) { console.warn('loadPOI:', e); }
+  ld('Načítám POI data…');
+  await loadPOI();
 
   poiGroup.bringToFront();
   updateLayoutPositions();
@@ -410,28 +399,14 @@ window.addEventListener('load', async () => {
 
 // ── Kategorie accordion — landscape default zavřený ─────────────
 // Při přechodu do landscape se <details> zavře; při opuštění zůstane otevřený (open attr v HTML).
-let _catsOpen = true;
-
-function toggleCatsAccordion() {
-  _catsOpen = !_catsOpen;
-  const body = document.getElementById('ls-cat-body');
-  const btn  = document.getElementById('cats-toggle-btn');
-  if (body) body.classList.toggle('cats-collapsed', !_catsOpen);
-  if (btn)  btn.classList.toggle('on', !_catsOpen);
-}
-
 function _syncCatsAccordion() {
-  const body = document.getElementById('ls-cat-body');
-  if (!body) return;
+  const det = document.getElementById('ls-cats-details');
+  if (!det) return;
   if (isLandscapeMob()) {
-    _catsOpen = false;
-    body.classList.add('cats-collapsed');
+    det.removeAttribute('open');   // vstup do landscape → zavřít
   } else {
-    _catsOpen = true;
-    body.classList.remove('cats-collapsed');
+    det.setAttribute('open', ''); // portrait/desktop → vždy otevřený
   }
-  const btn = document.getElementById('cats-toggle-btn');
-  if (btn) btn.classList.toggle('on', !_catsOpen);
 }
 
 window.addEventListener('resize', () => {
