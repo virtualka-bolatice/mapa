@@ -381,6 +381,12 @@ function ld(msg) {
 //  INICIALIZACE
 // ════════════════════════════════════════════════════════════════
 window.addEventListener('load', async () => {
+  // Desktop/mobil class na body — pro CSS cílení
+  function _syncMobileClass() {
+    document.body.classList.toggle('is-mobile', isMobile());
+  }
+  _syncMobileClass();
+  window.addEventListener('resize', _syncMobileClass);
   ld('Načítám datové vrstvy…');
   // Načtení všech souborů z DATA_FILES (config.js) přes script tagy
   if (typeof loadDataFiles === 'function') await loadDataFiles();
