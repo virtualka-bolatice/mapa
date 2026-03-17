@@ -620,10 +620,10 @@ body.map-rotated #fab-north { display: flex; opacity: 1; transition: opacity .35
 }
 #msr-panel.on { display: block; }
 .msr-cols { display: flex; gap: 0; align-items: stretch; }
-.msr-col  { flex: 1; text-align: center; padding: 0 6px; }
+.msr-col  { flex: 1; text-align: center; padding: 0 6px; white-space: nowrap; }
 .msr-col + .msr-col { border-left: 1px solid var(--border); }
-.msr-col-lbl { font-size: .6rem; letter-spacing: 1.2px; text-transform: uppercase; color: var(--muted); margin-bottom: 3px; }
-.msr-num     { font-family: 'Syne', sans-serif; font-size: 1.05rem; font-weight: 700; color: var(--acc2); }
+.msr-col-lbl { font-size: .6rem; letter-spacing: 1.2px; text-transform: uppercase; color: var(--muted); margin-bottom: 3px; white-space: nowrap; }
+.msr-num     { font-family: 'Syne', sans-serif; font-size: 1.05rem; font-weight: 700; color: var(--acc2); white-space: nowrap; }
 .msr-area-num { color: var(--orange); }
 .msr-hint    { font-size: .63rem; color: var(--dim); text-align: center; margin-top: 6px; }
 .msr-actions { display: flex; gap: 6px; margin-top: 7px; }
