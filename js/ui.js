@@ -304,10 +304,13 @@ function _updateGeoMarker(lat, lng, acc) {
         rotateWithView: true,   // zůstane vzpřímený při rotaci mapy
       })
       .addTo(map)
-      .bindPopup(`<div style="padding:8px 10px;font-size:.75rem">
-        📍 Vaše poloha<br>
-        <span id="geo-acc-txt" style="color:var(--muted);font-size:.68rem">±${Math.round(acc)} m</span>
-      </div>`);
+      .bindPopup(`
+        <div style="padding:10px 14px;text-align:center;font-family:'DM Sans',sans-serif;background:var(--surface,#161b27)">
+          <div style="font-size:.8rem;font-weight:700;color:var(--text,#e2e8f0);margin-bottom:5px;letter-spacing:-.2px">📍 Vaše poloha</div>
+          <div id="geo-acc-txt" style="display:inline-block;font-size:.67rem;font-weight:600;color:var(--acc3,#0ea5e9);background:rgba(14,165,233,.12);border:1px solid rgba(14,165,233,.25);padding:2px 9px;border-radius:20px;white-space:nowrap">±${Math.round(acc)} m</div>
+        </div>`,
+        { maxWidth: 160, className: 'geo-popup' }
+      );
 
     _geoCircle = L.circle([lat, lng], {
       radius: accR, color: '#3b82f6', fillColor: '#3b82f6',
