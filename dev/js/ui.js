@@ -305,17 +305,9 @@ function _updateGeoMarker(lat, lng, acc) {
       })
       .addTo(map)
       .bindPopup(`
-        <div style="
-          padding:10px 12px;
-          background:#fff;
-          border-radius:10px;
-          font-family:'DM Sans',sans-serif;
-          text-align:center;
-          min-width:0;
-          width:auto;
-        ">
-          <div style="font-size:.78rem;font-weight:700;color:#0f172a;margin-bottom:3px">📍 Vaše poloha</div>
-          <div id="geo-acc-txt" style="font-size:.68rem;color:#64748b;white-space:nowrap">±${Math.round(acc)} m</div>
+        <div style="padding:10px 14px;text-align:center;font-family:'DM Sans',sans-serif;background:var(--surface,#161b27)">
+          <div style="font-size:.8rem;font-weight:700;color:var(--text,#e2e8f0);margin-bottom:5px;letter-spacing:-.2px">📍 Vaše poloha</div>
+          <div id="geo-acc-txt" style="display:inline-block;font-size:.67rem;font-weight:600;color:var(--acc3,#0ea5e9);background:rgba(14,165,233,.12);border:1px solid rgba(14,165,233,.25);padding:2px 9px;border-radius:20px;white-space:nowrap">±${Math.round(acc)} m</div>
         </div>`,
         { maxWidth: 160, className: 'geo-popup' }
       );
