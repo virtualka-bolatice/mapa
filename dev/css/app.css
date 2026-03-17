@@ -1588,3 +1588,24 @@ body.nav-on #nav-pick-btn { display: none !important; }
   max-height: 0 !important; opacity: 0; pointer-events: none;
 }
 
+/* ── Geolokační popup — kompaktní, světlý ── */
+.geo-popup .leaflet-popup-content-wrapper {
+  background: #fff !important;
+  border: none !important;
+  border-radius: 12px !important;
+  box-shadow: 0 4px 20px rgba(0,0,0,.15), 0 1px 4px rgba(0,0,0,.08) !important;
+  padding: 0 !important;
+  min-width: 0 !important;
+  width: auto !important;
+}
+.geo-popup .leaflet-popup-content {
+  margin: 0 !important;
+  width: auto !important;
+}
+.geo-popup .leaflet-popup-tip {
+  background: #fff !important;
+}
+.geo-popup .leaflet-popup-close-button {
+  display: none !important;
+}
+
