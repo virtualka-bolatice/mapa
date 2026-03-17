@@ -140,8 +140,7 @@ Navigace využívá open-source routovací server **OSRM** a polohu zařízení 
 
 | Tlačítko | Funkce |
 |----------|--------|
-| **Vycentrovat** | Vrátí mapu na aktuální polohu (zobrazí se po ručním posunu) |
-| **🧭** | Zapne/vypne kužel pohledu |
+| **🧭 / Vycentrovat** | Vrátí mapu na aktuální polohu (zobrazí se po ručním posunu) |
 | **✕** | Ukončí navigaci |
 
 Po dosažení cíle (do 25 m) se zobrazí příjezdový modal se statistikami jízdy (čas, vzdálenost, způsob dopravy).
