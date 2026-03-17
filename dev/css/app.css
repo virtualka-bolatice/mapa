@@ -418,10 +418,14 @@ header {
 #nav-widget {
   display: none;
   position: absolute; top: calc(var(--hdr) + 8px); right: 8px;
-  z-index: 950; background: var(--surface);
-  border: 1px solid var(--acc3);
-  border-radius: var(--r); padding: 10px 12px 8px;
-  min-width: 210px; box-shadow: var(--sh);
+  z-index: 950;
+  background: var(--surface);
+  border: 1px solid rgba(14,165,233,.35);
+  border-top: 2px solid var(--acc3);
+  border-radius: var(--r);
+  padding: 10px 12px 8px;
+  min-width: 210px;
+  box-shadow: var(--sh), 0 0 0 1px rgba(14,165,233,.08) inset;
   animation: slideIn .22s ease;
 }
 #nav-widget.on { display: block; }
@@ -1590,8 +1594,8 @@ body.nav-on #nav-pick-btn { display: none !important; }
 
 /* ── Geolokační popup — kompaktní, světlý ── */
 .geo-popup .leaflet-popup-content-wrapper {
-  background: #fff !important;
-  border: none !important;
+  background: var(--surface) !important;
+  border: 1px solid rgba(14,165,233,.3) !important;
   border-radius: 12px !important;
   box-shadow: 0 4px 20px rgba(0,0,0,.15), 0 1px 4px rgba(0,0,0,.08) !important;
   padding: 0 !important;
@@ -1606,7 +1610,7 @@ body.nav-on #nav-pick-btn { display: none !important; }
   max-width: 150px !important;
 }
 .geo-popup .leaflet-popup-tip {
-  background: #fff !important;
+  background: var(--surface) !important;
 }
 .geo-popup .leaflet-popup-close-button {
   display: none !important;
