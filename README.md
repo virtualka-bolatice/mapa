@@ -1,6 +1,6 @@
 # 🗺 Interaktivní mapa obce Bolatice
 
-Webová interaktivní mapa obce Bolatice vznikla jako výstup diplomové práce na oboru **Geodézie a kartografie**. Kombinuje data z informačního systému digitální mapy veřejné správy (IS DMVS) s vlastní vrstvou bodů zájmu (POI) a navigačními funkcemi.
+Webová interaktivní mapa obce Bolatice vznikla jako výstup diplomové práce v oboru **Geodézie a kartografie**. Kombinuje data z informačního systému digitální mapy veřejné správy (IS DMVS) s vlastní vrstvou bodů zájmu (POI) a navigačními funkcemi.
 
 Mapa je přístupná přímo v prohlížeči bez nutnosti instalace — funguje na počítači i mobilním zařízení.
 
@@ -51,7 +51,7 @@ foto/               ← fotografie POI
 | Posun | Klik a tažení nebo šipkami na klávesnici |
 | Přiblížení / oddálení | `Scroll` nebo tlačítka `+` / `−` (vpravo dole) |
 | Přiblížení na oblast | `Shift` + tažení — vykreslí výběrový obdélník |
-| Rotace mapy | `Shift` + tažení pravým tlačítkem myši |
+| Rotace mapy | `Shift` + tažení kolečkem na myši |
 | Reset severu | Tlačítko kompasu (zobrazí se při otočené mapě) |
 
 ### Postranní panel
@@ -72,17 +72,11 @@ Ovládací panel je **spodní výsuvný panel** (bottom sheet):
 
 | Akce | Gesto |
 |------|-------|
-| Rozbalit panel | Tažení prouhu nahoru nebo kliknutí na kategorii |
+| Rozbalit panel | Tažení panelu nahoru nebo kliknutí na kategorii |
 | Skrýt panel | Tažení dolů |
 | Posun v mapě | Dotyk a tažení (v oblasti mapy nad panelem) |
 | Přiblížení | Sevření / rozevření dvěma prsty (pinch-to-zoom) |
 | Rotace mapy | Otočení dvěma prsty |
-
-### Krajinná orientace (na šířku)
-
-Panel se automaticky přesune do **levého bočního sloupce**. Mapa zabírá zbývající plochu vpravo. Panel lze skrýt tlačítkem **☰** v záhlaví — mapa se plynule rozšíří.
-
-Při přechodu do krajinné orientace se seznam kategorií automaticky sbalí do rozklikávací lišty **📍 KATEGORIE** — rozbalí se kliknutím.
 
 ---
 
@@ -116,7 +110,7 @@ POI jsou rozděleny do kategorií viditelných v bočním panelu:
 - Kliknutí na jinou kategorii → přepne výběr
 
 **Vyhledávání:**
-Do pole *Hledat v mapě* lze psát název místa nebo kategorie — výsledky se zobrazují v reálném čase. Na mobilním zařízení je vyhledávání dostupné přes ikonu 🔍 v záhlaví.
+Do pole *Hledat v mapě* lze psát název místa — výsledky se zobrazují v reálném čase. Na mobilním zařízení je vyhledávání dostupné přes ikonu 🔍 v záhlaví.
 
 **Popup POI** obsahuje:
 - Název, kategorii a subkategorii
@@ -168,7 +162,7 @@ Aktivace tlačítkem 📐 (FAB vpravo dole).
 | Uzavřít plochu | `Enter` nebo kliknutí blízko prvního bodu |
 | Zrušit měření | `Escape` nebo tlačítko Vymazat |
 
-Panel měření (vlevo dole) průběžně zobrazuje celkovou délku a odhadovanou plochu. Po uzavření polygonu se zobrazí přesná plocha a obvod.
+Panel měření průběžně zobrazuje celkovou délku a odhadovanou plochu. Po uzavření polygonu se zobrazí přesná plocha a obvod.
 
 ---
 
@@ -185,16 +179,12 @@ Zobrazí vrstvy z **Informačního systému digitální mapy veřejné správy**
 **Doprava**
 - Parkoviště a odstavné plochy
 - Provozní plochy pozemních komunikací
-- Obvod dráhy / obvod pozemní komunikace
 - Chodníky
-- Plocha železničních drah
 - Cyklostezky
 
 Každou vrstvu lze zapnout/vypnout přepínačem. Po zapnutí se zobrazí posuvník průhlednosti (0–100 %).
 
 Kliknutím na objekt se otevře popup s dostupnými atributy z IS DMVS (plocha, datum vkladu, ID stavby).
-
-Po opuštění pokročilého režimu se vrstvy automaticky vypnou a obnoví se předchozí stav kategorií POI. Rotace mapy je v pokročilém režimu zablokována a mapa se automaticky vyrovná na sever.
 
 ---
 
@@ -214,14 +204,13 @@ js/
   measure.js            měření vzdáleností a ploch
 data/
   *.js                  exporty vrstev z qgis2web
-  bolatice_poi.geojson  body zájmu (GeoJSON)
 foto/                   fotografie POI
 ```
 
 ### Přidání nové DMVS vrstvy
 
 1. Zkopírovat `.js` soubor exportovaný z qgis2web do složky `data/`
-2. Přidat `<script src="data/nazev.js">` do `index.html`
+2. Přidej řádek do `DATA_FILES`:  'NazevSouboru.js'
 3. Přidat záznam do pole `DMVS_LAYERS` v `js/config.js`
 
 ### Přidání / úprava kategorií POI
