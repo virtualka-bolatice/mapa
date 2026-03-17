@@ -689,16 +689,19 @@ body.map-rotated #fab-north { display: flex; opacity: 1; transition: opacity .35
    POI PŘEHLED — základní režim
    ════════════════════════════════════════════════════════════════ */
 #poi-overview {
+  display: none;  /* skryto dokud JS nenaplní obsah a není desktop */
   position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);
   z-index: 900; background: var(--surface); border: 1px solid var(--border);
   border-radius: 10px; padding: 5px 10px;
-  display: flex; align-items: center; gap: 6px;
+  align-items: center; gap: 6px;
   font-size: .68rem; color: var(--muted);
   box-shadow: var(--sh2); pointer-events: none;
   white-space: nowrap; flex-wrap: nowrap;
   transition: left .26s cubic-bezier(.4,0,.2,1), opacity .3s;
 }
-#poi-overview.adv-hide { display: none; }
+/* Desktop + defaultní režim → zobrazit */
+body:not(.is-mobile) #poi-overview.poi-ov-ready { display: flex; }
+#poi-overview.adv-hide { display: none !important; }
 .poi-ov-total {
   font-weight: 600; color: var(--text); font-size: .72rem;
   padding-right: 6px; border-right: 1px solid var(--border); margin-right: 2px;
