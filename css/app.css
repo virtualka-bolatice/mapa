@@ -1461,23 +1461,30 @@ body.nav-on #nav-pick-btn { display: none !important; }
   display: none;
   position: absolute; top: calc(var(--hdr) + 8px); left: 50%;
   transform: translateX(-50%);
-  z-index: 1060; background: var(--surface);
-  border: 1px solid var(--acc3); border-radius: var(--r);
-  padding: 8px 12px; gap: 10px; align-items: center;
-  box-shadow: var(--sh); white-space: nowrap;
+  z-index: 1060;
+  background: rgba(255,255,255,.97);
+  border: none;
+  border-radius: 14px;
+  padding: 10px 12px;
+  gap: 8px; align-items: center;
+  box-shadow: 0 4px 24px rgba(0,0,0,.18), 0 1px 4px rgba(0,0,0,.08);
+  white-space: nowrap;
   animation: slideIn .2s ease;
+  backdrop-filter: blur(8px);
 }
 #nav-confirm.on { display: flex; }
-.nc-label { font-size: .75rem; color: var(--muted); }
-.nc-dest  { font-family: 'Syne', sans-serif; font-size: .8rem; font-weight: 700;
-            color: var(--acc3); max-width: 150px; overflow: hidden;
+.nc-label { font-size: .68rem; color: #64748b; letter-spacing: .3px; }
+.nc-dest  { font-family: 'Syne', sans-serif; font-size: .82rem; font-weight: 700;
+            color: #0ea5e9; max-width: 150px; overflow: hidden;
             text-overflow: ellipsis; }
 .nc-btns  { display: flex; gap: 5px; }
-.nc-btn   { padding: 4px 10px; border-radius: 6px; font-family: inherit;
-            font-size: .7rem; cursor: pointer; border: 1px solid; transition: all .14s; }
-.nc-btn-ok  { background: var(--acc3); border-color: var(--acc3); color: #fff; }
-.nc-btn-ok:hover  { background: var(--accent); border-color: var(--accent); }
-.nc-btn-no  { background: var(--surf2); border-color: var(--border); color: var(--muted); }
+.nc-btn   { padding: 5px 12px; border-radius: 8px; font-family: inherit;
+            font-size: .7rem; font-weight: 600; cursor: pointer; border: none;
+            transition: all .14s; touch-action: manipulation; }
+.nc-btn-ok  { background: #0ea5e9; color: #fff; box-shadow: 0 2px 8px rgba(14,165,233,.35); }
+.nc-btn-ok:hover  { background: #0284c7; }
+.nc-btn-no  { background: #f1f5f9; color: #64748b; }
+.nc-btn-no:hover { background: #e2e8f0; color: #475569; }
 .nc-btn-no:hover  { border-color: var(--orange); color: var(--orange); }
 
 /* Desktop: nav-pick-btn vlevo pod widgetem */
@@ -1497,8 +1504,12 @@ body.nav-on #nav-pick-btn { display: none !important; }
   #nav-confirm {
     top: calc(var(--hdr) + 8px);
     max-width: calc(100vw - 24px);
+    padding: 6px 8px;
+    gap: 6px;
   }
-  .nc-dest { max-width: 100px; }
+  .nc-label { display: none; }
+  .nc-dest  { max-width: min(140px, 35vw); font-size: .75rem; }
+  .nc-btn   { padding: 4px 8px; font-size: .67rem; }
 }
 
 /* ════════════════════════════════════════════════════════════════
