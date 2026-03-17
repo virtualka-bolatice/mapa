@@ -172,19 +172,19 @@ Aktivace tlačítkem **⚙️ Pokročilý režim** v bočním panelu.
 
 Zobrazí vrstvy z **Informačního systému digitální mapy veřejné správy** rozdělené do skupin:
 
-**Budovy**
-- Hranice budov
-- Budovy (různé typy dle klasifikace IS DMVS)
+**Objekty**
+- Budovy
+- Parkoviště
+- Hřiště
 
 **Doprava**
-- Parkoviště a odstavné plochy
-- Provozní plochy pozemních komunikací
 - Chodníky
 - Cyklostezky
+- Komunikace
 
 Každou vrstvu lze zapnout/vypnout přepínačem. Po zapnutí se zobrazí posuvník průhlednosti (0–100 %).
 
-Kliknutím na objekt se otevře popup s dostupnými atributy z IS DMVS (plocha, datum vkladu, ID stavby).
+Kliknutím na objekt se otevře popup s dostupnými atributy z IS DMVS (plocha, datum vkladu).
 
 ---
 
