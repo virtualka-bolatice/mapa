@@ -124,5 +124,17 @@ function setTile(key) {
 
   document.querySelectorAll('.tbtn').forEach(b => b.className = 'tbtn off');
   document.getElementById('tbtn-' + key).className = 'tbtn on';
+  if (typeof _syncLsTileBtn === 'function') _syncLsTileBtn();
 }
 
+
+// ── LANDSCAPE TILE TOGGLE ─────────────────────────────────────────
+function lsTileToggle() {
+  const next = (activeTile === 'mapa') ? 'orto' : 'mapa';
+  setTile(next);
+  _syncLsTileBtn();
+}
+function _syncLsTileBtn() {
+  const btn = document.getElementById('ls-tile-btn');
+  if (btn) btn.textContent = (activeTile === 'mapa') ? '🗺 Mapa' : '🛰 Ortofoto';
+}

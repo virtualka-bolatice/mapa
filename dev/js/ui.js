@@ -434,8 +434,20 @@ function _syncCatsAccordion() {
   if (btn) btn.classList.toggle('on', !_catsOpen);
 }
 
+let _wasLandscape = false;
 window.addEventListener('resize', () => {
+  const nowLandscape = isLandscapeMob();
+  if (_wasLandscape && !nowLandscape && isMobile()) {
+    document.body.classList.remove('ls-sb-closed');
+    sbOpen = true;
+    const sbar = document.getElementById('sidebar');
+    if (sbar) { sbar.style.transform = ''; sbar.classList.remove('closed'); }
+    bsExpanded = false;
+    requestAnimationFrame(() => requestAnimationFrame(() => _bsInit()));
+  }
+  _wasLandscape = nowLandscape;
   _syncCatsAccordion();
+  _syncMobileClass();
   updateLayoutPositions();
   if (isMobile()) {
     _bsSnapTo(bsExpanded, false);
