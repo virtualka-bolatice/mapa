@@ -51,7 +51,7 @@ foto/               ← fotografie POI
 | Posun | Klik a tažení nebo šipkami na klávesnici |
 | Přiblížení / oddálení | `Scroll` nebo tlačítka `+` / `−` (vpravo dole) |
 | Přiblížení na oblast | `Shift` + tažení — vykreslí výběrový obdélník |
-| Rotace mapy | `Shift` + tažení kolečkem na myši |
+| Rotace mapy | `Shift` + točení kolečkem na myši |
 | Reset severu | Tlačítko kompasu (zobrazí se při otočené mapě) |
 
 ### Postranní panel
