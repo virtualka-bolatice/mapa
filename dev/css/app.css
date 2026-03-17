@@ -1597,10 +1597,13 @@ body.nav-on #nav-pick-btn { display: none !important; }
   padding: 0 !important;
   min-width: 0 !important;
   width: auto !important;
+  max-width: 160px !important;
 }
 .geo-popup .leaflet-popup-content {
   margin: 0 !important;
   width: auto !important;
+  min-width: 0 !important;
+  max-width: 150px !important;
 }
 .geo-popup .leaflet-popup-tip {
   background: #fff !important;
