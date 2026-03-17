@@ -4,9 +4,15 @@
 //  ui.js — Sidebar/BS, mobile search, geolokace live, init
 // ════════════════════════════════════════════════════════════════
 
-function isMobile()        { return window.innerWidth <= 768; }
+function isMobile() {
+  return (window.visualViewport ? window.visualViewport.width : window.innerWidth) <= 768;
+}
 // Landscape mobile: šířka > výška a max 900px — sidebar jako desktop
-function isLandscapeMob()  { return window.innerWidth <= 900 && window.innerWidth > window.innerHeight; }
+function isLandscapeMob() {
+  const w = window.innerWidth;
+  const h = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+  return w <= 900 && w > h;
+}
 
 // ════════════════════════════════════════════════════════════════
 //  BOTTOM SHEET — plynulý JS drag
@@ -16,7 +22,12 @@ let bsCurrentY  = 0;
 let bsExpanded  = false;
 let sbOpen      = true;
 
-function _bsFullH()  { return document.getElementById('sidebar')?.offsetHeight || 400; }
+function _bsFullH() {
+  // iOS: sidebar offsetHeight bere inner height bez address baru — použijeme visualViewport
+  const sb = document.getElementById('sidebar');
+  if (sb) return sb.offsetHeight;
+  return _vpHeight();
+}
 function _bsPeekY()  { return Math.max(0, _bsFullH() - BS_PEEK); }
 
 function _bsSetY(y, animate = false) {
@@ -38,6 +49,8 @@ function collapseBS(){ if (isMobile()) _bsSnapTo(false); }
 
 function _bsInit() {
   if (!isMobile()) return;
+  const scroll = document.getElementById('sb-scroll');
+  if (scroll) scroll.style.webkitOverflowScrolling = 'touch';  // iOS momentum
   requestAnimationFrame(() => { _bsSetY(_bsPeekY(), false); });
 }
 
@@ -438,6 +451,15 @@ function _syncCatsAccordion() {
 }
 
 let _wasLandscape = false;
+function _onViewportResize() {
+  // Spustí se při změně visualViewport (iOS address bar, keyboard)
+  if (isMobile() && !isLandscapeMob()) {
+    requestAnimationFrame(() => _bsSetY(_bsPeekY(), false));
+  }
+}
+if (window.visualViewport) {
+  window.visualViewport.addEventListener('resize', _onViewportResize);
+}
 window.addEventListener('resize', () => {
   const nowLandscape = isLandscapeMob();
   if (_wasLandscape && !nowLandscape && isMobile()) {
