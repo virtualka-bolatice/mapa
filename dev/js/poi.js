@@ -279,6 +279,9 @@ function renderPOIOverview(counts) {
         ${cat.icon}<span>${c[k]}</span>
       </span>` : ''
     ).join('')}`;
+
+  // Označit jako připravený — CSS ho zobrazí pouze na desktopu
+  el.classList.add('poi-ov-ready');
 }
 
 // ── MOBILNÍ KATEGORIE IKONY v peek pruhu ─────────────────────────
