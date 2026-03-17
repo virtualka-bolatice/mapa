@@ -162,7 +162,7 @@ function toggleSB() {
   if (isLandscapeMob()) {
     document.body.classList.toggle('ls-sb-closed', !sbOpen);
     // Polyfill: animovat --ml přes JS pro starší iOS/Android bez @property podpory
-    _animateML(sbOpen ? 210 : 0);
+    _animateML(sbOpen ? 220 : 0);
     // Po ukončení CSS přechodu (.28s) nech Leaflet překreslit dlaždice pro novou velikost
     setTimeout(() => {
       if (typeof map !== 'undefined' && map.invalidateSize) {
