@@ -1466,30 +1466,31 @@ body.nav-on #nav-pick-btn { display: none !important; }
   position: absolute; top: calc(var(--hdr) + 8px); left: 50%;
   transform: translateX(-50%);
   z-index: 1060;
-  background: rgba(255,255,255,.97);
-  border: none;
+  background: var(--surface);
+  border: 1px solid rgba(14,165,233,.3);
+  border-top: 2px solid var(--acc3);
   border-radius: 14px;
   padding: 10px 12px;
   gap: 8px; align-items: center;
-  box-shadow: 0 4px 24px rgba(0,0,0,.18), 0 1px 4px rgba(0,0,0,.08);
+  box-shadow: var(--sh), 0 0 0 1px rgba(14,165,233,.06) inset;
   white-space: nowrap;
   animation: slideIn .2s ease;
   backdrop-filter: blur(8px);
 }
 #nav-confirm.on { display: flex; }
-.nc-label { font-size: .68rem; color: #64748b; letter-spacing: .3px; }
+.nc-label { font-size: .65rem; color: var(--muted); letter-spacing: .3px; text-transform: uppercase; }
 .nc-dest  { font-family: 'Syne', sans-serif; font-size: .82rem; font-weight: 700;
-            color: #0ea5e9; max-width: 150px; overflow: hidden;
+            color: var(--acc3); max-width: 150px; overflow: hidden;
             text-overflow: ellipsis; }
 .nc-btns  { display: flex; gap: 5px; }
 .nc-btn   { padding: 5px 12px; border-radius: 8px; font-family: inherit;
-            font-size: .7rem; font-weight: 600; cursor: pointer; border: none;
+            font-size: .7rem; font-weight: 600; cursor: pointer; border: 1px solid transparent;
             transition: all .14s; touch-action: manipulation; }
-.nc-btn-ok  { background: #0ea5e9; color: #fff; box-shadow: 0 2px 8px rgba(14,165,233,.35); }
-.nc-btn-ok:hover  { background: #0284c7; }
-.nc-btn-no  { background: #f1f5f9; color: #64748b; }
-.nc-btn-no:hover { background: #e2e8f0; color: #475569; }
-.nc-btn-no:hover  { border-color: var(--orange); color: var(--orange); }
+.nc-btn-ok  { background: var(--acc3); color: #fff; border-color: var(--acc3);
+              box-shadow: 0 2px 8px rgba(14,165,233,.3); }
+.nc-btn-ok:hover  { background: var(--accent); border-color: var(--accent); }
+.nc-btn-no  { background: var(--surf2); color: var(--muted); border-color: var(--border); }
+.nc-btn-no:hover { border-color: var(--orange); color: var(--orange); }
 
 /* Desktop: nav-pick-btn vlevo pod widgetem */
 @media (min-width: 769px) {
@@ -1596,12 +1597,12 @@ body.nav-on #nav-pick-btn { display: none !important; }
 .geo-popup .leaflet-popup-content-wrapper {
   background: var(--surface) !important;
   border: 1px solid rgba(14,165,233,.3) !important;
-  border-radius: 12px !important;
-  box-shadow: 0 4px 20px rgba(0,0,0,.15), 0 1px 4px rgba(0,0,0,.08) !important;
+  border-radius: 40px !important;  /* pill shape */
+  box-shadow: var(--sh), 0 0 0 1px rgba(14,165,233,.06) inset !important;
   padding: 0 !important;
   min-width: 0 !important;
   width: auto !important;
-  max-width: 160px !important;
+  max-width: 260px !important;
 }
 .geo-popup .leaflet-popup-content {
   margin: 0 !important;
@@ -1609,9 +1610,7 @@ body.nav-on #nav-pick-btn { display: none !important; }
   min-width: 0 !important;
   max-width: 150px !important;
 }
-.geo-popup .leaflet-popup-tip {
-  background: var(--surface) !important;
-}
+.geo-popup .leaflet-popup-tip-container { display: none !important; }
 .geo-popup .leaflet-popup-close-button {
   display: none !important;
 }

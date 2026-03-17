@@ -305,11 +305,11 @@ function _updateGeoMarker(lat, lng, acc) {
       })
       .addTo(map)
       .bindPopup(`
-        <div style="padding:10px 14px;text-align:center;font-family:'DM Sans',sans-serif;background:var(--surface,#161b27)">
-          <div style="font-size:.8rem;font-weight:700;color:var(--text,#e2e8f0);margin-bottom:5px;letter-spacing:-.2px">📍 Vaše poloha</div>
-          <div id="geo-acc-txt" style="display:inline-block;font-size:.67rem;font-weight:600;color:var(--acc3,#0ea5e9);background:rgba(14,165,233,.12);border:1px solid rgba(14,165,233,.25);padding:2px 9px;border-radius:20px;white-space:nowrap">±${Math.round(acc)} m</div>
+        <div style="display:flex;align-items:center;gap:8px;padding:7px 12px;white-space:nowrap;font-family:'DM Sans',sans-serif">
+          <span style="font-size:.78rem;font-weight:700;color:#e2e8f0">📍 Vaše poloha</span>
+          <span id="geo-acc-txt" style="font-size:.65rem;font-weight:600;color:#0ea5e9;background:rgba(14,165,233,.15);border:1px solid rgba(14,165,233,.3);padding:2px 7px;border-radius:20px">±${Math.round(acc)} m</span>
         </div>`,
-        { maxWidth: 160, className: 'geo-popup' }
+        { maxWidth: 240, minWidth: 0, className: 'geo-popup' }
       );
 
     _geoCircle = L.circle([lat, lng], {
