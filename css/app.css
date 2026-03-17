@@ -620,10 +620,10 @@ body.map-rotated #fab-north { display: flex; opacity: 1; transition: opacity .35
 }
 #msr-panel.on { display: block; }
 .msr-cols { display: flex; gap: 0; align-items: stretch; }
-.msr-col  { flex: 1; text-align: center; padding: 0 6px; }
+.msr-col  { flex: 1; text-align: center; padding: 0 6px; white-space: nowrap; }
 .msr-col + .msr-col { border-left: 1px solid var(--border); }
-.msr-col-lbl { font-size: .6rem; letter-spacing: 1.2px; text-transform: uppercase; color: var(--muted); margin-bottom: 3px; }
-.msr-num     { font-family: 'Syne', sans-serif; font-size: 1.05rem; font-weight: 700; color: var(--acc2); }
+.msr-col-lbl { font-size: .6rem; letter-spacing: 1.2px; text-transform: uppercase; color: var(--muted); margin-bottom: 3px; white-space: nowrap; }
+.msr-num     { font-family: 'Syne', sans-serif; font-size: 1.05rem; font-weight: 700; color: var(--acc2); white-space: nowrap; }
 .msr-area-num { color: var(--orange); }
 .msr-hint    { font-size: .63rem; color: var(--dim); text-align: center; margin-top: 6px; }
 .msr-actions { display: flex; gap: 6px; margin-top: 7px; }
@@ -689,16 +689,19 @@ body.map-rotated #fab-north { display: flex; opacity: 1; transition: opacity .35
    POI PŘEHLED — základní režim
    ════════════════════════════════════════════════════════════════ */
 #poi-overview {
+  display: none;  /* skryto dokud JS nenaplní obsah a není desktop */
   position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);
   z-index: 900; background: var(--surface); border: 1px solid var(--border);
   border-radius: 10px; padding: 5px 10px;
-  display: flex; align-items: center; gap: 6px;
+  align-items: center; gap: 6px;
   font-size: .68rem; color: var(--muted);
   box-shadow: var(--sh2); pointer-events: none;
   white-space: nowrap; flex-wrap: nowrap;
   transition: left .26s cubic-bezier(.4,0,.2,1), opacity .3s;
 }
-#poi-overview.adv-hide { display: none; }
+/* Desktop + defaultní režim → zobrazit */
+body:not(.is-mobile) #poi-overview.poi-ov-ready { display: flex; }
+#poi-overview.adv-hide { display: none !important; }
 .poi-ov-total {
   font-weight: 600; color: var(--text); font-size: .72rem;
   padding-right: 6px; border-right: 1px solid var(--border); margin-right: 2px;
@@ -848,18 +851,16 @@ body.map-rotated #fab-north { display: flex; opacity: 1; transition: opacity .35
     bottom: calc(var(--mob-peek) + 54px);
     left: 50% !important; right: auto !important;
     transform: translateX(-50%) !important;
-    width: auto !important; max-width: calc(100vw - 48px) !important;
-    padding: 7px 12px 6px !important;
-    box-sizing: border-box !important;
+    min-width: 0 !important;
+    width: max-content !important;
+    max-width: calc(100vw - 32px) !important;
+    padding: 8px 12px 7px !important;
   }
-  .msr-cols { gap: 0; }
-  .msr-col  { flex: 0 1 auto; padding: 0 10px; white-space: nowrap; }
   .msr-col-lbl { font-size: .57rem !important; }
-  .msr-num  { font-size: .9rem !important; white-space: nowrap; }
-  .msr-area-num { font-size: .9rem !important; white-space: nowrap; }
+  .msr-num, .msr-area-num { font-size: .92rem !important; }
   .msr-hint { font-size: .58rem !important; margin-top: 3px !important; }
-  .msr-actions { margin-top: 5px !important; gap: 5px !important; }
-  .msr-actions button { font-size: .62rem !important; padding: 3px 7px !important; }
+  .msr-actions { margin-top: 5px !important; }
+  .msr-actions button { font-size: .62rem !important; padding: 3px 8px !important; }
 
   /* Stats/POI overview nad BS */
   #stats-panel, #poi-overview {
