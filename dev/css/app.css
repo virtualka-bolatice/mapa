@@ -1635,3 +1635,16 @@ body.nav-on #nav-pick-btn { display: none !important; }
   }
 }
 
+/* ── Header stabilita v portrait desktop mode na mobilu ── */
+@media (orientation: portrait) {
+  header {
+    position: fixed !important;
+    top: 0 !important; left: 0 !important; right: 0 !important;
+    z-index: 1100 !important;
+    display: flex !important;
+  }
+  #tilt-wrap {
+    top: var(--hdr) !important;
+  }
+}
+
