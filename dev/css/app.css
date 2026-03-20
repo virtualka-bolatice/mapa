@@ -686,7 +686,8 @@ body.map-rotated #fab-north { display: flex; opacity: 1; transition: opacity .35
   content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%) translateY(-1px);
   border: 6px solid transparent; border-top-color: var(--surface); z-index: 1;
 }
-.stat-ostatni-wrap:hover .stat-hover-table { display: block; }
+.stat-ostatni-wrap:hover .stat-hover-table,
+.stat-ostatni-wrap.open .stat-hover-table { display: block; }
 .sht-row {
   display: flex; align-items: center; gap: 7px;
   font-size: .68rem; color: var(--text); padding: 3px 0;
@@ -910,7 +911,7 @@ body:not(.is-mobile) #poi-overview.poi-ov-ready { display: flex; }
   #stats-panel.adv-show .stat-grp-lbl { display: none !important; }
   #stats-panel.adv-show .stat strong  { font-size: .68rem !important; }
   #stats-panel.adv-show .stat-dot     { width: 5px; height: 5px; }
-  #stats-panel.adv-show .stat-ostatni-wrap:hover .stat-hover-table { display: none; }
+  /* hover table: ovládáno JS třídou .open (kompatibilita mobil) */
 
   /* Badge — přes celou šířku, ne vlevo */
   #dbadge { font-size: .62rem; }
@@ -1613,5 +1614,24 @@ body.nav-on #nav-pick-btn { display: none !important; }
 .geo-popup .leaflet-popup-tip-container { display: none !important; }
 .geo-popup .leaflet-popup-close-button {
   display: none !important;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   DESKTOP MODE NA MOBILU (pointer:coarse + wide screen)
+   Prohlížeč v desktop režimu na telefonu — zachová sidebar,
+   ale přizpůsobí touch targets a odstraní BS.
+   ════════════════════════════════════════════════════════════════ */
+@media (pointer: coarse) and (min-width: 769px) and (orientation: portrait) {
+  /* Sidebar zůstane — desktop layout, ale touch-friendly */
+  .hbtn, .cat-chip, .ql-row, .fab, .tbtn, .nc-btn {
+    min-height: 40px;
+    touch-action: manipulation;
+  }
+  /* Popup bude dost velký pro prst */
+  .bpop-btn, .ppop-btn { min-height: 40px; font-size: .78rem; }
+  /* Zoom controls větší */
+  .leaflet-control-zoom a {
+    width: 38px !important; height: 38px !important; line-height: 38px !important;
+  }
 }
 

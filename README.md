@@ -28,6 +28,7 @@ Stačí otevřít soubor `index.html` v moderním prohlížeči (Chrome, Firefox
 ```
 index.html          ← hlavní soubor, otevřít v prohlížeči
 css/app.css
+css/ikonky          ← obrázkové soubory
 js/
   config.js         ← konfigurace vrstev a kategorií (editovatelný)
   map.js
