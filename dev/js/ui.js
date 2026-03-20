@@ -11,7 +11,11 @@ function isMobile() {
 function isLandscapeMob() {
   const w = window.innerWidth;
   const h = window.visualViewport ? window.visualViewport.height : window.innerHeight;
-  return w <= 900 && w > h;
+  // Desktop mode na mobilu: wider than 900px ale touch zařízení v landscape
+  const isTouch = navigator.maxTouchPoints > 0 || 'ontouchstart' in window;
+  const isLandscape = w > h;
+  // Normální landscape mobil NEBO desktop mode na touch zařízení v landscape
+  return (w <= 900 && isLandscape) || (isTouch && isLandscape && w > 900 && h < 600);
 }
 
 // ════════════════════════════════════════════════════════════════
