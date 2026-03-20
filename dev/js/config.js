@@ -137,12 +137,14 @@ const CAT_CFG = {
     sport_hal: { label:'Hala',           icon:'🏋️', color:'#059669' },
     detske:    { label:'Dětské hřiště',  icon:'🛝', color:'#34d399' },
     turistika: { label:'Turistika',      icon:'🥾', color:'#f59e0b' },
+    bar:        { label:'Bar & koktejly',  icon:'🍸', color:'#a855f7' },
   }},
   urad:   { label:'Úřady & instituce', color:'#3b82f6', icon:'🏛️', subs:{
     urad_obec: { label:'Obecní úřad', icon:'🏛️', color:'#3b82f6' },
     skola:     { label:'Škola',       icon:'🏫', color:'#60a5fa' },
     cirkev:    { label:'Kostel',      icon:'⛪', color:'#93c5fd' },
     posta:     { label:'Pošta',       icon:'📮', color:'#6366f1' },
+    hrbitov: { label:'Hřbitov', icon:'⚰️', color:'#6b7280' },
   }},
   obchod: { label:'Obchody',           color:'#f59e0b', icon:'🛒', subs:{
     potraviny: { label:'Potraviny', icon:'🛒', color:'#f59e0b' },
@@ -154,6 +156,8 @@ const CAT_CFG = {
     auto:        { label:'Auto-moto',   icon:'🔧', color:'#f97316' },
     finance:     { label:'Banka',       icon:'🏦', color:'#60a5fa' },
     ubytovani:   { label:'Ubytování',   icon:'🏨', color:'#34d399' },
+    socialni: { label:'Sociální služby', icon:'🤝', color:'#a78bfa' },
+    doprava: { label:'Doprava', icon:'🚉', color:'#0ea5e9' },
     ostatni:     { label:'Ostatní',     icon:'⚙️', color:'#94a3b8' },
   }},
 };
