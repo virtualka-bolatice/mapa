@@ -12,8 +12,10 @@ const ST = {
   catActive:  {},
   subActive:  {},
   searchQ:    '',
-  filterMode: false,
-  filterKey:  null,
+  filterMode:    false,
+  filterKey:     null,
+  subFilterMode: false,
+  subFilterKey:  null,
 };
 Object.keys(CAT_CFG).forEach(k => ST.catActive[k] = true);
 
@@ -32,11 +34,6 @@ function makeIcon(emoji, color, sz = 33) {
     </svg></div>`,
     className: '', iconSize: [s, s+8], iconAnchor: [s/2, s+8], popupAnchor: [0, -(s+8)],
   });
-}
-
-// ── Bez diakritiky pro vyhledávání ────────────────────────────────
-function _norm(s) {
-  return (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9 ]/g,' ');
 }
 
 // ── NAČTENÍ DAT ──────────────────────────────────────────────────
@@ -94,22 +91,27 @@ async function loadPOI() {
 
 // ── SUBKATEGORIE SLUŽBY ──────────────────────────────────────────
 function buildSubUI() {
-  const el = document.getElementById('sub-sluzby');
-  el.innerHTML = '';
-  for (const [k, sub] of Object.entries(CAT_CFG.sluzby.subs)) {
-    if (ST.subActive[k] === undefined) ST.subActive[k] = true;
-    const d = document.createElement('div');
-    d.className   = 'sub-chip' + (ST.subActive[k] ? ' active' : '');
-    d.id          = 'subchip-' + k;
-    d.style.color = sub.color;
-    d.innerHTML   = `<div class="sub-dot"></div><span>${sub.icon} ${sub.label}</span>`;
-    d.onclick     = () => toggleSub(k);
-    el.appendChild(d);
+  for (const [catKey, cat] of Object.entries(CAT_CFG)) {
+    if (!cat.subs || Object.keys(cat.subs).length === 0) continue;
+    const el = document.getElementById('sub-' + catKey);
+    if (!el) continue;
+    el.innerHTML = '';
+    for (const [k, sub] of Object.entries(cat.subs)) {
+      if (ST.subActive[k] === undefined) ST.subActive[k] = true;
+      const d = document.createElement('div');
+      d.className   = 'sub-chip' + (ST.subActive[k] ? ' active' : '');
+      d.id          = 'subchip-' + k;
+      d.style.color = sub.color;
+      d.innerHTML   = `<div class="sub-dot"></div><span>${sub.icon} ${sub.label}</span>`;
+      d.onclick     = () => toggleSub(k);
+      el.appendChild(d);
+    }
   }
 }
 
-function toggleSubList() {
-  document.getElementById('sub-sluzby').classList.toggle('x');
+function toggleSubList(catKey) {
+  const el = document.getElementById('sub-' + (catKey || 'sluzby'));
+  if (el) el.classList.toggle('x');
 }
 
 // ── RENDEROVÁNÍ ──────────────────────────────────────────────────
@@ -125,9 +127,8 @@ function renderPOI() {
     if (!cat || !ST.catActive[p.kategorie]) return;
     if (p.podkategorie && ST.subActive[p.podkategorie] === false) return;
     if (ST.searchQ) {
-      const q = _norm(ST.searchQ);
-      const _c = CAT_CFG[p.kategorie], _sc = _c?.subs?.[p.podkategorie];
-      if (![p.nazev,p.adresa,p.typ,p.popis,_c?.label,_sc?.label].some(s => _norm(s).includes(q))) return;
+      const q = ST.searchQ.toLowerCase();
+      if (![(p.nazev||''),(p.adresa||''),(p.typ||'')].some(s => s.toLowerCase().includes(q))) return;
     }
 
     let color = cat.color, icon = cat.icon;
@@ -158,7 +159,7 @@ function buildPOIPopup(p, color, icon, lat, lng) {
   const sc   = cat?.subs?.[p.podkategorie];
   const typ  = p.typ || sc?.label || cat?.label || '';
   // Foto: podporuje jedno nebo více oddělených čárkou (foto1.jpg,foto2.webp)
-  const _fotoValid = (s) => s && /\.(png|jpg|jpeg|webp)$/i.test(s.trim());
+  const _fotoValid = (s) => s && /\.(png|jpg|jpeg|webp|webm|mp4|mov)$/i.test(s.trim());
   const _fotoUrl   = (s) => {
     s = s.trim();
     return (s.includes('/') || s.startsWith('http')) ? s : `foto/${s}`;
@@ -166,6 +167,7 @@ function buildPOIPopup(p, color, icon, lat, lng) {
   const fotoList = (p.foto || '').split(',').map(s=>s.trim()).filter(_fotoValid).map(_fotoUrl);
   const fotoIdx  = `ppf-${Math.random().toString(36).slice(2,7)}`;
 
+  const _isVideo = (s) => /\.(webm|mp4|mov)$/i.test(s);
   let foto = '';
   if (fotoList.length > 0) {
     const arrows = fotoList.length > 1
@@ -173,11 +175,15 @@ function buildPOIPopup(p, color, icon, lat, lng) {
          <button class="ppop-ph-next" onclick="ppopFoto('${fotoIdx}',1,event)">›</button>
          <span class="ppop-ph-cnt" id="${fotoIdx}-cnt">1/${fotoList.length}</span>`
       : '';
+    const firstMedia = _isVideo(fotoList[0])
+      ? `<video class="ppop-photo ppop-video" src="${fotoList[0]}" muted playsinline loop autoplay
+              onclick="event.stopPropagation();openLBGallery('${fotoIdx}')"></video>`
+      : `<img class="ppop-photo" src="${fotoList[0]}" alt="${p.nazev||''}"
+              onclick="openLBGallery('${fotoIdx}')"
+              onload="if(this.naturalHeight>this.naturalWidth){this.style.objectPosition='center 15%';this.style.maxHeight='200px'}"
+              onerror="this.outerHTML='<div class=ppop-ph>${icon}</div>'">`;
     foto = `<div class="ppop-photo-wrap" id="${fotoIdx}" data-imgs='${JSON.stringify(fotoList)}' data-idx="0">
-      <img class="ppop-photo" src="${fotoList[0]}" alt="${p.nazev||''}"
-           onclick="openLBGallery('${fotoIdx}')"
-           onload="if(this.naturalHeight>this.naturalWidth){this.style.objectPosition='center 15%';this.style.maxHeight='200px'}"
-           onerror="this.outerHTML='<div class=ppop-ph>${icon}</div>'">
+      ${firstMedia}
       ${arrows}
     </div>`;
   }
@@ -197,13 +203,11 @@ function buildPOIPopup(p, color, icon, lat, lng) {
 
   return `
     ${foto}
-    <div class="ppop-body">
-      <div class="ppop-head">
-        <div class="ppop-badge" style="background:${color}18;color:${color}">${icon} ${typ}</div>
-        <div class="ppop-name">${p.nazev || 'Bez názvu'}</div>
-      </div>
-      ${rows ? `<div class="ppop-div"></div><div class="ppop-rows">${rows}</div>` : ''}
+    <div class="ppop-head">
+      <div class="ppop-badge" style="background:${color}18;color:${color}">${icon} ${typ}</div>
+      <div class="ppop-name">${p.nazev || 'Bez názvu'}</div>
     </div>
+    ${rows ? `<div class="ppop-div"></div><div style="padding-bottom:6px">${rows}</div>` : ''}
     <div class="ppop-action-bar">
       <button class="ppop-action-btn nav" onclick="navigateTo(${lat},${lng},'${safeName}')" title="Navigovat">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>
@@ -233,17 +237,38 @@ function openLBGallery(wrapId) {
 function openLB(src) {
   _lbGallery = [src]; _lbIdx = 0; _lbShow();
 }
+const _lbIsVideo = (s) => /\.(webm|mp4|mov)$/i.test(s || '');
+
 function _lbShow() {
   const lb  = document.getElementById('lightbox');
-  const img = document.getElementById('lb-img');
   const cnt = document.getElementById('lb-counter');
-  img.style.opacity = '0';
-  img.src = _lbGallery[_lbIdx];
-  img.onload = () => { img.style.opacity = '1'; };
+  const src = _lbGallery[_lbIdx];
   cnt.textContent = _lbGallery.length > 1 ? `${_lbIdx + 1} / ${_lbGallery.length}` : '';
   lb.classList.toggle('lb-multi', _lbGallery.length > 1);
+
+  // Odstraň předchozí media element a vlož správný typ
+  const existing = lb.querySelector('#lb-img, #lb-video');
+  const isVid = _lbIsVideo(src);
+
+  if (isVid) {
+    const vid = document.createElement('video');
+    vid.id = 'lb-video'; vid.src = src;
+    vid.style.cssText = 'max-width:90vw;max-height:86vh;border-radius:8px;box-shadow:0 8px 40px rgba(0,0,0,.8);cursor:zoom-out';
+    vid.controls = true; vid.autoplay = true; vid.loop = false; vid.playsInline = true;
+    vid.onclick = (e) => { e.stopPropagation(); };
+    if (existing) existing.replaceWith(vid); else lb.appendChild(vid);
+  } else {
+    let img = document.getElementById('lb-img');
+    if (!img) { img = document.createElement('img'); img.id = 'lb-img'; if (existing) existing.replaceWith(img); else lb.appendChild(img); }
+    else if (existing && existing.id !== 'lb-img') existing.replaceWith(img);
+    img.style.opacity = '0';
+    img.src = src;
+    img.onclick = (e) => { e.stopPropagation(); closeLB(); };
+    img.style.cursor = 'zoom-out';
+    img.onload = () => { img.style.opacity = '1'; };
+  }
+
   lb.classList.add('on');
-  // Touch swipe pro galerii
   _lbAttachSwipe(lb);
 }
 
@@ -270,15 +295,32 @@ function closeLB() {
 // Popup foto slider
 function ppopFoto(wrapId, dir, e) {
   e?.stopPropagation();
-  const wrap  = document.getElementById(wrapId);
+  const wrap = document.getElementById(wrapId);
   if (!wrap) return;
-  const imgs  = JSON.parse(wrap.dataset.imgs);
-  let idx     = (parseInt(wrap.dataset.idx) + dir + imgs.length) % imgs.length;
+  const imgs = JSON.parse(wrap.dataset.imgs);
+  const _isVid = (s) => /\.(webm|mp4|mov)$/i.test(s);
+  let idx = (parseInt(wrap.dataset.idx) + dir + imgs.length) % imgs.length;
   wrap.dataset.idx = idx;
-  const img   = wrap.querySelector('.ppop-photo');
-  const cnt   = document.getElementById(`${wrapId}-cnt`);
-  if (img) { img.style.opacity='.4'; img.src = imgs[idx]; img.onload = () => img.style.opacity='1'; }
+  const src = imgs[idx];
+  const cnt = document.getElementById(`${wrapId}-cnt`);
   if (cnt) cnt.textContent = `${idx+1}/${imgs.length}`;
+  // Nahraď media element správným typem
+  const old = wrap.querySelector('.ppop-photo');
+  if (!old) return;
+  if (_isVid(src)) {
+    const vid = document.createElement('video');
+    vid.className = 'ppop-photo ppop-video'; vid.src = src;
+    vid.muted = true; vid.autoplay = true; vid.loop = true; vid.playsInline = true;
+    vid.onclick = (ev) => { ev.stopPropagation(); openLBGallery(wrapId); };
+    old.replaceWith(vid);
+  } else {
+    const img = document.createElement('img');
+    img.className = 'ppop-photo'; img.src = src; img.style.opacity = '.4';
+    img.onload = () => { img.style.opacity = '1'; };
+    img.onclick = () => openLBGallery(wrapId);
+    img.onerror = () => { img.outerHTML = '<div class="ppop-ph">🖼️</div>'; };
+    old.replaceWith(img);
+  }
 }
 
 document.addEventListener('keydown', e => {
@@ -396,8 +438,8 @@ function renderMobSubcats() {
 
     if (ST.subActive[k] === undefined) ST.subActive[k] = true;
     const pill = document.createElement('span');
-    pill.className   = 'mob-sub-pill' + (ST.subActive[k] ? ' active' : ' mob-sub-dimmed');
-    pill.dataset.key = k;
+    pill.className   = 'mob-sub-pill' + (ST.subActive[k] ? ' active' : '');
+    pill.dataset.key = k;                           // pro sync
     pill.style.color = sub.color || cat.color;
     pill.innerHTML   = `<span class="mob-sub-pill-ico">${sub.icon}</span>${sub.label}`;
     pill.onclick     = () => toggleSub(k);
@@ -425,9 +467,8 @@ function _renderResultsInto(listId, cntId) {
     // Filtr subkategorií — všechny kategorie
     if (p.podkategorie && ST.subActive[p.podkategorie] === false) return false;
     if (ST.searchQ) {
-      const q = _norm(ST.searchQ);
-      const _c = CAT_CFG[p.kategorie], _sc = _c?.subs?.[p.podkategorie];
-      if (![p.nazev,p.adresa,p.typ,p.popis,_c?.label,_sc?.label].some(s => _norm(s).includes(q))) return false;
+      const q = ST.searchQ.toLowerCase();
+      if (![(p.nazev||''),(p.adresa||''),(p.typ||'')].some(s => s.toLowerCase().includes(q))) return false;
     }
     return true;
   });
@@ -460,11 +501,17 @@ function _renderResultsInto(listId, cntId) {
           if (m.feature?.properties?.nazev === p.nazev) {
             m.openPopup();
             const pin = m.getElement()?.querySelector('.poi-pin') || m.getElement();
-            if (pin) { pin.classList.remove('poi-pulse'); void pin.offsetWidth; pin.classList.add('poi-pulse'); setTimeout(() => pin.classList.remove('poi-pulse'), 1600); }
+            if (pin) {
+              pin.classList.remove('poi-pulse');
+              void pin.offsetWidth;
+              pin.classList.add('poi-pulse');
+              setTimeout(() => pin.classList.remove('poi-pulse'), 1600);
+            }
           }
         });
       }, 320);
-      closeMobSearch();
+      if (typeof closeMobSearchKeepQuery === 'function') closeMobSearchKeepQuery();
+      else closeMobSearch();
     };
     list.appendChild(d);
   });
@@ -502,37 +549,56 @@ function toggleCat(k) {
   renderMobCatIcons();
   renderMobSubcats();
 
-  // Na mobilu: pouze hint při prvním filtrování, NEROZTAHUJ BS
-  if (typeof isMobile === 'function' && isMobile() && !_firstFilterDone && ST.filterMode) {
-    _firstFilterDone = true;
-    const hint = document.getElementById('mob-swipe-hint');
-    if (hint) { hint.classList.add('visible'); setTimeout(() => hint.classList.remove('visible'), 2500); }
+  // Na mobilu: vyjeď BS nahoru plynule (výsledky jsou viditelné)
+  if (typeof isMobile === 'function' && isMobile()) {
+    expandBS();
   }
 }
-let _firstFilterDone = false;
 
 function toggleSub(k) {
-  // Najdi všechny sourozence (subkategorie stejné rodičovské kategorie)
   const parentKey = Object.keys(CAT_CFG).find(c => CAT_CFG[c].subs?.[k]);
-  const sibs = parentKey ? Object.keys(CAT_CFG[parentKey].subs) : [];
-  const wasActive = !!ST.subActive[k];
+  const subs = parentKey ? Object.keys(CAT_CFG[parentKey].subs) : [k];
 
-  if (!wasActive) {
-    // Zapínáme → exclusive: vypni ostatní, zapni tuto
-    sibs.forEach(s => {
+  if (!ST.subFilterMode) {
+    // Zapni exclusive sub-filter + skryj ostatní kategorie
+    ST.subFilterMode = true; ST.subFilterKey = k;
+    subs.forEach(s => {
       ST.subActive[s] = (s === k);
       document.getElementById('subchip-' + s)?.classList.toggle('active', s === k);
+      document.getElementById('subchip-' + s)?.classList.toggle('dimmed', s !== k);
     });
-  } else {
-    // Vypínáme → reset: zapni všechny
-    sibs.forEach(s => {
+    // Skryj ostatní kategorie
+    if (parentKey) {
+      Object.keys(CAT_CFG).forEach(c => {
+        ST.catActive[c] = (c === parentKey);
+        document.getElementById('chip-' + c)?.classList.toggle('active', c === parentKey);
+        document.getElementById('chip-' + c)?.classList.toggle('dimmed', c !== parentKey);
+      });
+    }
+  } else if (ST.subFilterKey === k) {
+    // Reset
+    ST.subFilterMode = false; ST.subFilterKey = null;
+    subs.forEach(s => {
       ST.subActive[s] = true;
       document.getElementById('subchip-' + s)?.classList.add('active');
+      document.getElementById('subchip-' + s)?.classList.remove('dimmed');
+    });
+    // Obnov všechny kategorie
+    Object.keys(CAT_CFG).forEach(c => {
+      ST.catActive[c] = true;
+      document.getElementById('chip-' + c)?.classList.add('active');
+      document.getElementById('chip-' + c)?.classList.remove('dimmed');
+    });
+  } else {
+    // Přepni na jinou subkat
+    ST.subFilterKey = k;
+    subs.forEach(s => {
+      ST.subActive[s] = (s === k);
+      document.getElementById('subchip-' + s)?.classList.toggle('active', s === k);
+      document.getElementById('subchip-' + s)?.classList.toggle('dimmed', s !== k);
     });
   }
-  renderPOI();
-  renderResults();
-  renderMobSubcats();
+  renderPOI(); renderResults(); renderMobSubcats();
 }
 
 function doSearch(q) {

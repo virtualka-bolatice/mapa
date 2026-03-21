@@ -93,8 +93,11 @@
 
 <!-- ══ LIGHTBOX ═════════════════════════════════════════════════ -->
 <div id="lightbox" onclick="closeLB()">
-  <span id="lb-close">✕</span>
-  <img id="lb-img" src="" alt="">
+  <button id="lb-close" onclick="event.stopPropagation();closeLB()">✕</button>
+  <button id="lb-prev" onclick="lbPrev(event);event.stopPropagation()">‹</button>
+  <img id="lb-img" src="" alt="" onclick="event.stopPropagation();closeLB()" style="cursor:zoom-out">
+  <button id="lb-next" onclick="lbNext(event);event.stopPropagation()">›</button>
+  <div id="lb-counter"></div>
 </div>
 
 <!-- ══ NAVIGAČNÍ WIDGET (aktivní trasa) ════════════════════════ -->

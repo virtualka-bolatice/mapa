@@ -333,7 +333,9 @@ header {
 .cat-chip.dimmed:hover { opacity: .7; }
 
 .sub-wrap { display: none; padding: 1px 0 4px 28px; }
-.sub-wrap.x { display: block; }
+.sub-wrap.x { display: block; max-height: 160px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+.sub-wrap.x::-webkit-scrollbar { width: 3px; }
+.sub-wrap.x::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 .sub-chip {
   display: flex; align-items: center; gap: 6px;
   padding: 4px 7px; border-radius: 6px; cursor: pointer;
@@ -411,28 +413,11 @@ header {
 .ppop-v a     { color: var(--acc3); text-decoration: none; }
 .ppop-v a:hover { text-decoration: underline; }
 /* Tlačítka pod sebe — úzká popupová šířka, plná šířka tlačítek */
-/* old ppop-btn kept for compat */
-.ppop-foot { display: none; }
-.ppop-btn  { display: none; }
-
-/* ── POI popup action bar — row of icon-buttons at bottom ── */
-.ppop-rows { padding: 0 0 8px; }
-.ppop-action-bar {
-  display: flex; gap: 5px;
-  padding: 6px 10px 9px; border-top: 1px solid var(--border);
-  background: var(--surf2); border-radius: 0 0 var(--r) var(--r);
-}
-.ppop-action-btn {
-  flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px;
-  padding: 6px 4px 5px; border-radius: 8px; cursor: pointer;
-  border: 1px solid var(--border); background: var(--surface);
-  color: var(--muted); font-family: inherit; font-size: .58rem; font-weight: 500;
-  transition: all .14s; white-space: nowrap;
-}
-.ppop-action-btn svg { width: 15px; height: 15px; }
-.ppop-action-btn:hover { background: var(--surf3); color: var(--text); border-color: var(--muted); }
-.ppop-action-btn.nav { border-color: var(--acc3); color: var(--acc3); background: rgba(14,165,233,.07); }
-.ppop-action-btn.nav:hover { background: var(--acc3); color: #fff; border-color: var(--acc3); }
+.ppop-foot    { padding: 6px 10px 10px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 5px; }
+.ppop-btn     { width: 100%; padding: 7px 8px; border-radius: 7px; text-align: center; border: 1px solid var(--border); background: var(--surf2); color: var(--text); font-family: inherit; font-size: .72rem; cursor: pointer; transition: all .14s; white-space: nowrap; }
+.ppop-btn:hover { background: var(--accent); border-color: var(--accent); color: #fff; }
+.ppop-btn.nav  { border-color: var(--acc3); color: var(--acc3); background: rgba(14,165,233,.08); font-weight: 500; }
+.ppop-btn.nav:hover { background: var(--acc3); border-color: var(--acc3); color: #fff; }
 
 /* POI pin — base class (žádná rotace — rotateWithView:false to řeší nativně) */
 .poi-pin { display: inline-block; }
@@ -994,24 +979,18 @@ body:not(.is-mobile) #poi-overview.poi-ov-ready { display: flex; }
     display: inline-flex; align-items: center; gap: 4px;
     padding: 3px 9px; border-radius: 20px;
     font-size: .72rem; font-weight: 500; cursor: pointer;
+    /* rámeček POUZE na zapnutých (active) subkategoriích */
     border: 1.5px solid transparent;
-    transition: all .18s; opacity: 1; white-space: nowrap; flex-shrink: 0;
+    transition: all .18s;
+    opacity: .45;
   }
+  /* Zapnutá (active) subkategorie — plná viditelnost + rámeček */
   .mob-sub-pill.active {
-    opacity: 1; border-color: currentColor;
-    background: rgba(255,255,255,.10);
+    opacity: 1;
+    border-color: currentColor;
+    background: rgba(255,255,255,.08);
   }
-  .mob-sub-dimmed { opacity: .28; }
   .mob-sub-pill-ico { font-size: .75rem; }
-  /* Scrollable subcat row */
-  #mob-subcat-wrap {
-    display: flex; overflow-x: auto; flex-wrap: nowrap;
-    gap: 6px; padding: 6px 12px 4px;
-    scrollbar-width: none; -webkit-overflow-scrolling: touch;
-    border-top: 1px solid var(--border);
-  }
-  #mob-subcat-wrap::-webkit-scrollbar { display: none; }
-  #mob-subcat-wrap:empty { display: none; }
 }
 
 
@@ -1735,37 +1714,51 @@ body.nav-on #nav-pick-btn { display: none !important; }
   padding: 1px 6px; border-radius: 10px; pointer-events: none;
 }
 .ppop-photo { transition: opacity .18s; }
+.ppop-video { width: 100%; border-radius: 0; display: block; background: #000; }
 
 
-/* ── POI pulse ── */
+/* ── POI marker pulse — klik na výsledek ── */
 @keyframes poiPulse {
-  0%   { transform: scale(1); filter: none; }
-  30%  { transform: scale(1.65); filter: drop-shadow(0 0 14px var(--accent)) drop-shadow(0 0 4px #fff8); }
-  65%  { transform: scale(1.2); filter: drop-shadow(0 0 7px var(--accent)); }
-  100% { transform: scale(1); filter: none; }
+  0%   { transform: scale(1);    filter: none; }
+  28%  { transform: scale(1.7);  filter: drop-shadow(0 0 16px var(--accent)) drop-shadow(0 0 5px #fff); }
+  60%  { transform: scale(1.25); filter: drop-shadow(0 0 8px var(--accent)); }
+  100% { transform: scale(1);    filter: none; }
 }
-.poi-pin.poi-pulse { animation: poiPulse .6s ease-out 2; transform-origin: 50% 100%; }
+.poi-pin.poi-pulse { animation: poiPulse .65s ease-out 2; transform-origin: 50% 100%; }
 
-/* ── Swipe-up hint (first filter on mobile) ── */
-#mob-swipe-hint {
-  display: none; position: absolute; bottom: 32px; left: 50%;
-  transform: translateX(-50%); z-index: 1200; pointer-events: none;
-  flex-direction: column; align-items: center; gap: 4px;
+/* ── Subkat dimmed ── */
+.sub-chip.dimmed { opacity: .28; }
+
+/* ── POI popup action bar ── */
+.ppop-action-bar {
+  display: flex; gap: 5px;
+  padding: 6px 10px 9px; border-top: 1px solid var(--border);
+  background: var(--surf2); border-radius: 0 0 var(--r) var(--r);
 }
-#mob-swipe-hint.visible { display: flex; animation: swipeFade 2.5s ease forwards; }
-@keyframes swipeFade {
-  0%,10%  { opacity: 0; transform: translateX(-50%) translateY(8px); }
-  25%,75% { opacity: 1; transform: translateX(-50%) translateY(0); }
-  100%    { opacity: 0; }
+.ppop-action-btn {
+  flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px;
+  padding: 6px 4px 5px; border-radius: 8px; cursor: pointer;
+  border: 1px solid var(--border); background: var(--surface);
+  color: var(--muted); font-family: inherit; font-size: .58rem; font-weight: 500;
+  transition: all .14s; white-space: nowrap;
 }
-.swipe-hint-arrow {
-  width: 22px; height: 22px;
-  border-left: 2.5px solid #fff; border-top: 2.5px solid #fff;
-  transform: rotate(45deg); border-radius: 2px;
-  animation: bounceArr .5s ease-in-out infinite alternate;
+.ppop-action-btn svg { width: 15px; height: 15px; }
+.ppop-action-btn:hover { background: var(--surf3); color: var(--text); border-color: var(--muted); }
+.ppop-action-btn.nav { border-color: var(--acc3); color: var(--acc3); background: rgba(14,165,233,.07); }
+.ppop-action-btn.nav:hover { background: var(--acc3); color: #fff; border-color: var(--acc3); }
+
+/* ── Video thumbnail — play overlay ── */
+.ppop-video-thumb {
+  position: relative; cursor: pointer;
+  border-radius: var(--r) var(--r) 0 0; overflow: hidden;
 }
-@keyframes bounceArr {
-  from { transform: rotate(45deg) translateY(0); }
-  to   { transform: rotate(45deg) translateY(-6px); }
+.ppop-play-overlay {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  background: rgba(0,0,0,.32); transition: background .15s;
 }
-.swipe-hint-txt { font-size: .6rem; color: rgba(255,255,255,.88); text-shadow: 0 1px 5px rgba(0,0,0,.8); white-space: nowrap; }
+.ppop-video-thumb:hover .ppop-play-overlay { background: rgba(0,0,0,.18); }
+.ppop-play-overlay svg {
+  width: 38px; height: 38px; color: #fff;
+  filter: drop-shadow(0 2px 8px rgba(0,0,0,.6));
+  opacity: .9;
+}

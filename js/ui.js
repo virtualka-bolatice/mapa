@@ -197,6 +197,11 @@ function closeMobSearch() {
   if (res) res.innerHTML = '';
 }
 
+// Zavře overlay bez resetování search query ani výsledků
+function closeMobSearchKeepQuery() {
+  document.getElementById('mob-search')?.classList.remove('open');
+}
+
 // ════════════════════════════════════════════════════════════════
 //  LAYOUT POSITIONS (desktop)
 // ════════════════════════════════════════════════════════════════

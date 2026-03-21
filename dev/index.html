@@ -95,7 +95,7 @@
 <div id="lightbox" onclick="closeLB()">
   <button id="lb-close" onclick="event.stopPropagation();closeLB()">✕</button>
   <button id="lb-prev" onclick="lbPrev(event);event.stopPropagation()">‹</button>
-  <img id="lb-img" src="" alt="" onclick="lbNext(event)">
+  <img id="lb-img" src="" alt="" onclick="event.stopPropagation();closeLB()" style="cursor:zoom-out">
   <button id="lb-next" onclick="lbNext(event);event.stopPropagation()">›</button>
   <div id="lb-counter"></div>
 </div>
@@ -196,7 +196,6 @@
   <!-- #tilt-wrap: perspective container, overflow:hidden klipuje černé hrany při tiltu -->
   <div id="tilt-wrap">
     <div id="map"></div>
-    <div id="mob-swipe-hint" class="mob-only"><div class="swipe-hint-arrow"></div><span class="swipe-hint-txt">Přejeď nahoru pro výsledky</span></div>
   </div>
 </div>
 
@@ -424,8 +423,6 @@
 <script src="js/poi.js"></script>
 <script src="js/measure.js"></script>
 <script src="js/nav.js"></script>
-<script src="data/poi/POI_0.js" onerror="void 0"></script>
-<script src="data/poi/POI.js" onerror="void 0"></script>
 
 <!-- ══ POI DATA — staticky před ui.js → window.json_POI dostupné při loadPOI() ══
      Zkouší oba umístění. Chyba při nenalezení je potlačena (onerror=void 0). ══════ -->
