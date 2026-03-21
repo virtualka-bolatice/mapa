@@ -163,6 +163,18 @@ function prow(i, v) {
   return `<div class="ppop-row"><div class="ppop-i">${i}</div><div class="ppop-v">${v}</div></div>`;
 }
 
+// ── Formátování čísel — skupiny po 3 (725516959 → 725 516 959) ──
+function _fmtNum(s) {
+  if (!s) return s;
+  const str = String(s).trim();
+  // Telefonní číslo: formatuj čistě číselnou část, zachovej +420 prefix
+  return str.replace(/(\+?\d+)/g, n => {
+    const digits = n.replace(/\D/g, '');
+    // Skupiny po 3 zprava
+    return n.replace(digits, digits.replace(/\B(?=(\d{3})+(?!\d))/g, ' '));
+  });
+}
+
 function buildPOIPopup(p, color, icon, lat, lng) {
   const cat  = CAT_CFG[p.kategorie];
   const sc   = cat?.subs?.[p.podkategorie];
@@ -199,11 +211,10 @@ function buildPOIPopup(p, color, icon, lat, lng) {
 
   let rows = '';
   if (p.adresa) rows += prow('📍', p.adresa);
-  if (p.tel)    rows += prow('📞', `<a href="tel:${p.tel}">${p.tel}</a>`);
+  if (p.tel)    rows += prow('📞', `<a href="tel:${p.tel}">${_fmtNum(p.tel)}</a>`);
   if (p.provoz) rows += prow('🕐', p.provoz);
   if (p.web)    rows += prow('🌐', `<a href="${p.web}" target="_blank">${p.web.replace(/https?:\/\//,'')}</a>`);
   if (p.email)  rows += prow('✉️', `<a href="mailto:${p.email}">${p.email}</a>`);
-  if (p.ico)    rows += prow('🏢', 'IČO: ' + p.ico);
   if (p.popis)  rows += prow('ℹ️', p.popis);
 
   const navGoogle = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((p.nazev||'') + ' Bolatice')}`;
