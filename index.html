@@ -247,23 +247,32 @@
       <div class="ls-cat-body" id="ls-cat-body">
       <div class="cat-chip active" id="chip-gastro" style="color:var(--gastro)" onclick="toggleCat('gastro')">
         <div class="cat-dot"></div><span class="cat-chip-lbl">Gastronomie</span><span class="cat-cnt" id="cnt-gastro">0</span>
+        <span class="cat-arr" id="cat-arr-gastro" onclick="event.stopPropagation();toggleSubList('gastro')" style="padding:2px 4px;color:var(--gastro)">▶</span>
       </div>
+      <div class="sub-wrap" id="sub-gastro"></div>
       <div class="cat-chip active" id="chip-zdravi" style="color:var(--zdravi)" onclick="toggleCat('zdravi')">
         <div class="cat-dot"></div><span class="cat-chip-lbl">Zdravotnictví</span><span class="cat-cnt" id="cnt-zdravi">0</span>
+        <span class="cat-arr" id="cat-arr-zdravi" onclick="event.stopPropagation();toggleSubList('zdravi')" style="padding:2px 4px;color:var(--zdravi)">▶</span>
       </div>
+      <div class="sub-wrap" id="sub-zdravi"></div>
       <div class="cat-chip active" id="chip-sport" style="color:var(--sport)" onclick="toggleCat('sport')">
         <div class="cat-dot"></div><span class="cat-chip-lbl">Sport &amp; volný čas</span><span class="cat-cnt" id="cnt-sport">0</span>
+        <span class="cat-arr" id="cat-arr-sport" onclick="event.stopPropagation();toggleSubList('sport')" style="padding:2px 4px;color:var(--sport)">▶</span>
       </div>
+      <div class="sub-wrap" id="sub-sport"></div>
       <div class="cat-chip active" id="chip-urad" style="color:var(--urad)" onclick="toggleCat('urad')">
         <div class="cat-dot"></div><span class="cat-chip-lbl">Úřady &amp; instituce</span><span class="cat-cnt" id="cnt-urad">0</span>
+        <span class="cat-arr" id="cat-arr-urad" onclick="event.stopPropagation();toggleSubList('urad')" style="padding:2px 4px;color:var(--urad)">▶</span>
       </div>
+      <div class="sub-wrap" id="sub-urad"></div>
       <div class="cat-chip active" id="chip-obchod" style="color:var(--obchod)" onclick="toggleCat('obchod')">
         <div class="cat-dot"></div><span class="cat-chip-lbl">Obchody</span><span class="cat-cnt" id="cnt-obchod">0</span>
+        <span class="cat-arr" id="cat-arr-obchod" onclick="event.stopPropagation();toggleSubList('obchod')" style="padding:2px 4px;color:var(--obchod)">▶</span>
       </div>
+      <div class="sub-wrap" id="sub-obchod"></div>
       <div class="cat-chip active" id="chip-sluzby" style="color:var(--sluzby)" onclick="toggleCat('sluzby')">
         <div class="cat-dot"></div><span class="cat-chip-lbl">Služby</span><span class="cat-cnt" id="cnt-sluzby">0</span>
-        <span class="cat-arr" onclick="event.stopPropagation();toggleSubList()"
-              style="padding:2px 4px;color:var(--sluzby)">▶</span>
+        <span class="cat-arr" id="cat-arr-sluzby" onclick="event.stopPropagation();toggleSubList('sluzby')" style="padding:2px 4px;color:var(--sluzby)">▶</span>
       </div>
       <div class="sub-wrap" id="sub-sluzby"></div>
       </div><!-- /ls-cat-body -->

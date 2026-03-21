@@ -96,7 +96,13 @@ function buildSubUI() {
     const el = document.getElementById('sub-' + catKey);
     if (!el) continue;
     el.innerHTML = '';
+    // Spočítej POI pro každou subkat
+    const subCounts = {};
+    ST.features.filter(f => f.properties.kategorie === catKey)
+               .forEach(f => { const s = f.properties.podkategorie; if (s) subCounts[s] = (subCounts[s]||0)+1; });
+
     for (const [k, sub] of Object.entries(cat.subs)) {
+      if (!subCounts[k]) continue;  // skryj prázdné subkategorie
       if (ST.subActive[k] === undefined) ST.subActive[k] = true;
       const d = document.createElement('div');
       d.className   = 'sub-chip' + (ST.subActive[k] ? ' active' : '');
@@ -106,6 +112,9 @@ function buildSubUI() {
       d.onclick     = () => toggleSub(k);
       el.appendChild(d);
     }
+    // Skryj šipku pokud žádné subkategorie nemají POI
+    const arr = document.getElementById('cat-arr-' + catKey);
+    if (arr) arr.style.display = el.children.length ? '' : 'none';
   }
 }
 
@@ -590,13 +599,34 @@ function toggleSub(k) {
       document.getElementById('chip-' + c)?.classList.remove('dimmed');
     });
   } else {
-    // Přepni na jinou subkat
+    // Přepni — může být jiná subkat jiné kategorie
+    const prevParent = Object.keys(CAT_CFG).find(c => CAT_CFG[c].subs?.[ST.subFilterKey]);
+    if (prevParent && prevParent !== parentKey) {
+      // Plný reset předchozí kategorie: všechny subkategorie zapnout, kategorie oddimnout
+      if (CAT_CFG[prevParent]?.subs) {
+        Object.keys(CAT_CFG[prevParent].subs).forEach(s => {
+          ST.subActive[s] = true;
+          document.getElementById('subchip-' + s)?.classList.add('active');
+          document.getElementById('subchip-' + s)?.classList.remove('dimmed');
+        });
+      }
+      // Zavři rozvinutý sub-wrap předchozí kategorie
+      document.getElementById('sub-' + prevParent)?.classList.remove('x');
+    }
     ST.subFilterKey = k;
+    // Aktivuj novou kategorii, skryj ostatní
     subs.forEach(s => {
       ST.subActive[s] = (s === k);
       document.getElementById('subchip-' + s)?.classList.toggle('active', s === k);
       document.getElementById('subchip-' + s)?.classList.toggle('dimmed', s !== k);
     });
+    if (parentKey) {
+      Object.keys(CAT_CFG).forEach(c => {
+        ST.catActive[c] = (c === parentKey);
+        document.getElementById('chip-' + c)?.classList.toggle('active', c === parentKey);
+        document.getElementById('chip-' + c)?.classList.toggle('dimmed', c !== parentKey);
+      });
+    }
   }
   renderPOI(); renderResults(); renderMobSubcats();
 }
