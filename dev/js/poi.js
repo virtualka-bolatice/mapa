@@ -180,7 +180,7 @@ function buildPOIPopup(p, color, icon, lat, lng) {
   const sc   = cat?.subs?.[p.podkategorie];
   const typ  = p.typ || sc?.label || cat?.label || '';
   // Foto: podporuje jedno nebo více oddělených čárkou (foto1.jpg,foto2.webp)
-  const _fotoValid = (s) => s && /\.(png|jpg|jpeg|webp|webm|mp4|mov)$/i.test(s.trim());
+  const _fotoValid = (s) => s && /\.(png|jpg|jpeg|webp)$/i.test(s.trim());
   const _fotoUrl   = (s) => {
     s = s.trim();
     return (s.includes('/') || s.startsWith('http')) ? s : `foto/${s}`;
@@ -188,7 +188,6 @@ function buildPOIPopup(p, color, icon, lat, lng) {
   const fotoList = (p.foto || '').split(',').map(s=>s.trim()).filter(_fotoValid).map(_fotoUrl);
   const fotoIdx  = `ppf-${Math.random().toString(36).slice(2,7)}`;
 
-  const _isVideo = (s) => /\.(webm|mp4|mov)$/i.test(s);
   let foto = '';
   if (fotoList.length > 0) {
     const arrows = fotoList.length > 1
@@ -196,15 +195,11 @@ function buildPOIPopup(p, color, icon, lat, lng) {
          <button class="ppop-ph-next" onclick="ppopFoto('${fotoIdx}',1,event)">›</button>
          <span class="ppop-ph-cnt" id="${fotoIdx}-cnt">1/${fotoList.length}</span>`
       : '';
-    const firstMedia = _isVideo(fotoList[0])
-      ? `<video class="ppop-photo ppop-video" src="${fotoList[0]}" muted playsinline loop autoplay
-              onclick="event.stopPropagation();openLBGallery('${fotoIdx}')"></video>`
-      : `<img class="ppop-photo" src="${fotoList[0]}" alt="${p.nazev||''}"
-              onclick="openLBGallery('${fotoIdx}')"
-              onload="if(this.naturalHeight>this.naturalWidth){this.style.objectPosition='center 15%';this.style.maxHeight='200px'}"
-              onerror="this.outerHTML='<div class=ppop-ph>${icon}</div>'">`;
     foto = `<div class="ppop-photo-wrap" id="${fotoIdx}" data-imgs='${JSON.stringify(fotoList)}' data-idx="0">
-      ${firstMedia}
+      <img class="ppop-photo" src="${fotoList[0]}" alt="${p.nazev||''}"
+           onclick="openLBGallery('${fotoIdx}')"
+           onload="if(this.naturalHeight>this.naturalWidth){this.style.objectPosition='center 15%';this.style.maxHeight='200px'}"
+           onerror="this.outerHTML='<div class=ppop-ph>${icon}</div>'">
       ${arrows}
     </div>`;
   }
@@ -257,37 +252,15 @@ function openLBGallery(wrapId) {
 function openLB(src) {
   _lbGallery = [src]; _lbIdx = 0; _lbShow();
 }
-const _lbIsVideo = (s) => /\.(webm|mp4|mov)$/i.test(s || '');
-
 function _lbShow() {
   const lb  = document.getElementById('lightbox');
+  const img = document.getElementById('lb-img');
   const cnt = document.getElementById('lb-counter');
-  const src = _lbGallery[_lbIdx];
+  img.style.opacity = '0';
+  img.src = _lbGallery[_lbIdx];
+  img.onload = () => { img.style.opacity = '1'; };
   cnt.textContent = _lbGallery.length > 1 ? `${_lbIdx + 1} / ${_lbGallery.length}` : '';
   lb.classList.toggle('lb-multi', _lbGallery.length > 1);
-
-  // Odstraň předchozí media element a vlož správný typ
-  const existing = lb.querySelector('#lb-img, #lb-video');
-  const isVid = _lbIsVideo(src);
-
-  if (isVid) {
-    const vid = document.createElement('video');
-    vid.id = 'lb-video'; vid.src = src;
-    vid.style.cssText = 'max-width:90vw;max-height:86vh;border-radius:8px;box-shadow:0 8px 40px rgba(0,0,0,.8);cursor:zoom-out';
-    vid.controls = true; vid.autoplay = true; vid.loop = false; vid.playsInline = true;
-    vid.onclick = (e) => { e.stopPropagation(); };
-    if (existing) existing.replaceWith(vid); else lb.appendChild(vid);
-  } else {
-    let img = document.getElementById('lb-img');
-    if (!img) { img = document.createElement('img'); img.id = 'lb-img'; if (existing) existing.replaceWith(img); else lb.appendChild(img); }
-    else if (existing && existing.id !== 'lb-img') existing.replaceWith(img);
-    img.style.opacity = '0';
-    img.src = src;
-    img.onclick = (e) => { e.stopPropagation(); closeLB(); };
-    img.style.cursor = 'zoom-out';
-    img.onload = () => { img.style.opacity = '1'; };
-  }
-
   lb.classList.add('on');
   _lbAttachSwipe(lb);
 }
@@ -318,29 +291,12 @@ function ppopFoto(wrapId, dir, e) {
   const wrap = document.getElementById(wrapId);
   if (!wrap) return;
   const imgs = JSON.parse(wrap.dataset.imgs);
-  const _isVid = (s) => /\.(webm|mp4|mov)$/i.test(s);
   let idx = (parseInt(wrap.dataset.idx) + dir + imgs.length) % imgs.length;
   wrap.dataset.idx = idx;
-  const src = imgs[idx];
   const cnt = document.getElementById(`${wrapId}-cnt`);
   if (cnt) cnt.textContent = `${idx+1}/${imgs.length}`;
-  // Nahraď media element správným typem
-  const old = wrap.querySelector('.ppop-photo');
-  if (!old) return;
-  if (_isVid(src)) {
-    const vid = document.createElement('video');
-    vid.className = 'ppop-photo ppop-video'; vid.src = src;
-    vid.muted = true; vid.autoplay = true; vid.loop = true; vid.playsInline = true;
-    vid.onclick = (ev) => { ev.stopPropagation(); openLBGallery(wrapId); };
-    old.replaceWith(vid);
-  } else {
-    const img = document.createElement('img');
-    img.className = 'ppop-photo'; img.src = src; img.style.opacity = '.4';
-    img.onload = () => { img.style.opacity = '1'; };
-    img.onclick = () => openLBGallery(wrapId);
-    img.onerror = () => { img.outerHTML = '<div class="ppop-ph">🖼️</div>'; };
-    old.replaceWith(img);
-  }
+  const img = wrap.querySelector('.ppop-photo');
+  if (img) { img.style.opacity = '.4'; img.src = imgs[idx]; img.onload = () => { img.style.opacity = '1'; }; }
 }
 
 document.addEventListener('keydown', e => {
