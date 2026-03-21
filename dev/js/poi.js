@@ -34,6 +34,11 @@ function makeIcon(emoji, color, sz = 33) {
   });
 }
 
+// ── Bez diakritiky pro vyhledávání ────────────────────────────────
+function _norm(s) {
+  return (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9 ]/g,' ');
+}
+
 // ── NAČTENÍ DAT ──────────────────────────────────────────────────
 async function loadPOI() {
   let gj = null;
@@ -120,8 +125,9 @@ function renderPOI() {
     if (!cat || !ST.catActive[p.kategorie]) return;
     if (p.podkategorie && ST.subActive[p.podkategorie] === false) return;
     if (ST.searchQ) {
-      const q = ST.searchQ.toLowerCase();
-      if (![(p.nazev||''),(p.adresa||''),(p.typ||'')].some(s => s.toLowerCase().includes(q))) return;
+      const q = _norm(ST.searchQ);
+      const _c = CAT_CFG[p.kategorie], _sc = _c?.subs?.[p.podkategorie];
+      if (![p.nazev,p.adresa,p.typ,p.popis,_c?.label,_sc?.label].some(s => _norm(s).includes(q))) return;
     }
 
     let color = cat.color, icon = cat.icon;
@@ -151,16 +157,30 @@ function buildPOIPopup(p, color, icon, lat, lng) {
   const cat  = CAT_CFG[p.kategorie];
   const sc   = cat?.subs?.[p.podkategorie];
   const typ  = p.typ || sc?.label || cat?.label || '';
-  // Foto: jen soubory s platnou příponou (png/jpg/jpeg/webp), bez přípony → null
-  const _fotoValid = (s) => s && /\.(png|jpg|jpeg|webp)$/i.test(s);
-  const fotoSrc = _fotoValid(p.foto)
-    ? (p.foto.includes('/') || p.foto.startsWith('http') ? p.foto : `foto/${p.foto}`)
-    : null;
-  const foto = fotoSrc
-    ? `<img class="ppop-photo" src="${fotoSrc}" alt="${p.nazev || ''}"
-         onclick="openLB(this.src)"
-         onerror="this.parentNode.innerHTML='<div class=ppop-ph>${icon}</div>'">`
-    : '';
+  // Foto: podporuje jedno nebo více oddělených čárkou (foto1.jpg,foto2.webp)
+  const _fotoValid = (s) => s && /\.(png|jpg|jpeg|webp)$/i.test(s.trim());
+  const _fotoUrl   = (s) => {
+    s = s.trim();
+    return (s.includes('/') || s.startsWith('http')) ? s : `foto/${s}`;
+  };
+  const fotoList = (p.foto || '').split(',').map(s=>s.trim()).filter(_fotoValid).map(_fotoUrl);
+  const fotoIdx  = `ppf-${Math.random().toString(36).slice(2,7)}`;
+
+  let foto = '';
+  if (fotoList.length > 0) {
+    const arrows = fotoList.length > 1
+      ? `<button class="ppop-ph-prev" onclick="ppopFoto('${fotoIdx}',-1,event)">‹</button>
+         <button class="ppop-ph-next" onclick="ppopFoto('${fotoIdx}',1,event)">›</button>
+         <span class="ppop-ph-cnt" id="${fotoIdx}-cnt">1/${fotoList.length}</span>`
+      : '';
+    foto = `<div class="ppop-photo-wrap" id="${fotoIdx}" data-imgs='${JSON.stringify(fotoList)}' data-idx="0">
+      <img class="ppop-photo" src="${fotoList[0]}" alt="${p.nazev||''}"
+           onclick="openLBGallery('${fotoIdx}')"
+           onload="if(this.naturalHeight>this.naturalWidth){this.style.objectPosition='center 15%';this.style.maxHeight='200px'}"
+           onerror="this.outerHTML='<div class=ppop-ph>${icon}</div>'">
+      ${arrows}
+    </div>`;
+  }
 
   let rows = '';
   if (p.adresa) rows += prow('📍', p.adresa);
@@ -177,27 +197,95 @@ function buildPOIPopup(p, color, icon, lat, lng) {
 
   return `
     ${foto}
-    <div class="ppop-head">
-      <div class="ppop-badge" style="background:${color}18;color:${color}">${icon} ${typ}</div>
-      <div class="ppop-name">${p.nazev || 'Bez názvu'}</div>
+    <div class="ppop-body">
+      <div class="ppop-head">
+        <div class="ppop-badge" style="background:${color}18;color:${color}">${icon} ${typ}</div>
+        <div class="ppop-name">${p.nazev || 'Bez názvu'}</div>
+      </div>
+      ${rows ? `<div class="ppop-div"></div><div class="ppop-rows">${rows}</div>` : ''}
     </div>
-    ${rows ? `<div class="ppop-div"></div><div style="padding-bottom:6px">${rows}</div>` : ''}
-    <div class="ppop-foot">
-      <button class="ppop-btn nav" onclick="navigateTo(${lat},${lng},'${safeName}')">🧭 Navigovat</button>
-      <button class="ppop-btn" onclick="window.open('${navGoogle}','_blank')">🗺 Otevřít v Google Maps</button>
-      ${p.web ? `<button class="ppop-btn" onclick="window.open('${p.web}','_blank')">🌐 Webová stránka</button>` : ''}
+    <div class="ppop-action-bar">
+      <button class="ppop-action-btn nav" onclick="navigateTo(${lat},${lng},'${safeName}')" title="Navigovat">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>
+        <span>Navigovat</span>
+      </button>
+      <button class="ppop-action-btn" onclick="window.open('${navGoogle}','_blank')" title="Google Mapy">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+        <span>Mapa</span>
+      </button>
+      ${p.web ? `<button class="ppop-action-btn" onclick="window.open('${p.web}','_blank')" title="Web">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+        <span>Web</span>
+      </button>` : ''}
     </div>`;
 }
 
 // ── LIGHTBOX ─────────────────────────────────────────────────────
+let _lbGallery = [], _lbIdx = 0;
+
+function openLBGallery(wrapId) {
+  const wrap = document.getElementById(wrapId);
+  if (!wrap) return;
+  _lbGallery = JSON.parse(wrap.dataset.imgs || '[]');
+  _lbIdx     = parseInt(wrap.dataset.idx || '0');
+  _lbShow();
+}
 function openLB(src) {
-  document.getElementById('lb-img').src = src;
-  document.getElementById('lightbox').classList.add('on');
+  _lbGallery = [src]; _lbIdx = 0; _lbShow();
 }
+function _lbShow() {
+  const lb  = document.getElementById('lightbox');
+  const img = document.getElementById('lb-img');
+  const cnt = document.getElementById('lb-counter');
+  img.style.opacity = '0';
+  img.src = _lbGallery[_lbIdx];
+  img.onload = () => { img.style.opacity = '1'; };
+  cnt.textContent = _lbGallery.length > 1 ? `${_lbIdx + 1} / ${_lbGallery.length}` : '';
+  lb.classList.toggle('lb-multi', _lbGallery.length > 1);
+  lb.classList.add('on');
+  // Touch swipe pro galerii
+  _lbAttachSwipe(lb);
+}
+
+let _lbSwipeX = null;
+function _lbAttachSwipe(lb) {
+  if (lb._swipeAttached) return;
+  lb._swipeAttached = true;
+  lb.addEventListener('touchstart', e => { _lbSwipeX = e.touches[0].clientX; }, { passive: true });
+  lb.addEventListener('touchend', e => {
+    if (_lbSwipeX === null) return;
+    const dx = e.changedTouches[0].clientX - _lbSwipeX;
+    _lbSwipeX = null;
+    if (Math.abs(dx) < 40) return;
+    dx < 0 ? lbNext() : lbPrev();
+  }, { passive: true });
+}
+function lbPrev(e) { e?.stopPropagation(); _lbIdx = (_lbIdx - 1 + _lbGallery.length) % _lbGallery.length; _lbShow(); }
+function lbNext(e) { e?.stopPropagation(); _lbIdx = (_lbIdx + 1) % _lbGallery.length; _lbShow(); }
 function closeLB() {
-  document.getElementById('lightbox').classList.remove('on');
+  document.getElementById('lightbox').classList.remove('on', 'lb-multi');
+  _lbGallery = []; _lbIdx = 0;
 }
-document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeLB(); } });
+
+// Popup foto slider
+function ppopFoto(wrapId, dir, e) {
+  e?.stopPropagation();
+  const wrap  = document.getElementById(wrapId);
+  if (!wrap) return;
+  const imgs  = JSON.parse(wrap.dataset.imgs);
+  let idx     = (parseInt(wrap.dataset.idx) + dir + imgs.length) % imgs.length;
+  wrap.dataset.idx = idx;
+  const img   = wrap.querySelector('.ppop-photo');
+  const cnt   = document.getElementById(`${wrapId}-cnt`);
+  if (img) { img.style.opacity='.4'; img.src = imgs[idx]; img.onload = () => img.style.opacity='1'; }
+  if (cnt) cnt.textContent = `${idx+1}/${imgs.length}`;
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape')      { closeLB(); }
+  if (e.key === 'ArrowRight')  { lbNext(); }
+  if (e.key === 'ArrowLeft')   { lbPrev(); }
+});
 
 // ── POČTY + POI PŘEHLED ──────────────────────────────────────────
 function updateCounts() {
@@ -308,8 +396,8 @@ function renderMobSubcats() {
 
     if (ST.subActive[k] === undefined) ST.subActive[k] = true;
     const pill = document.createElement('span');
-    pill.className   = 'mob-sub-pill' + (ST.subActive[k] ? ' active' : '');
-    pill.dataset.key = k;                           // pro sync
+    pill.className   = 'mob-sub-pill' + (ST.subActive[k] ? ' active' : ' mob-sub-dimmed');
+    pill.dataset.key = k;
     pill.style.color = sub.color || cat.color;
     pill.innerHTML   = `<span class="mob-sub-pill-ico">${sub.icon}</span>${sub.label}`;
     pill.onclick     = () => toggleSub(k);
@@ -337,8 +425,9 @@ function _renderResultsInto(listId, cntId) {
     // Filtr subkategorií — všechny kategorie
     if (p.podkategorie && ST.subActive[p.podkategorie] === false) return false;
     if (ST.searchQ) {
-      const q = ST.searchQ.toLowerCase();
-      if (![(p.nazev||''),(p.adresa||''),(p.typ||'')].some(s => s.toLowerCase().includes(q))) return false;
+      const q = _norm(ST.searchQ);
+      const _c = CAT_CFG[p.kategorie], _sc = _c?.subs?.[p.podkategorie];
+      if (![p.nazev,p.adresa,p.typ,p.popis,_c?.label,_sc?.label].some(s => _norm(s).includes(q))) return false;
     }
     return true;
   });
@@ -366,9 +455,15 @@ function _renderResultsInto(listId, cntId) {
       </div>`;
     d.onclick = () => {
       map.setView([lat, lng], 17);
-      poiGroup.eachLayer(m => {
-        if (m.feature?.properties?.nazev === p.nazev) m.openPopup();
-      });
+      setTimeout(() => {
+        poiGroup.eachLayer(m => {
+          if (m.feature?.properties?.nazev === p.nazev) {
+            m.openPopup();
+            const pin = m.getElement()?.querySelector('.poi-pin') || m.getElement();
+            if (pin) { pin.classList.remove('poi-pulse'); void pin.offsetWidth; pin.classList.add('poi-pulse'); setTimeout(() => pin.classList.remove('poi-pulse'), 1600); }
+          }
+        });
+      }, 320);
       closeMobSearch();
     };
     list.appendChild(d);
@@ -407,19 +502,36 @@ function toggleCat(k) {
   renderMobCatIcons();
   renderMobSubcats();
 
-  // Na mobilu: vyjeď BS nahoru plynule (výsledky jsou viditelné)
-  if (typeof isMobile === 'function' && isMobile()) {
-    expandBS();
+  // Na mobilu: pouze hint při prvním filtrování, NEROZTAHUJ BS
+  if (typeof isMobile === 'function' && isMobile() && !_firstFilterDone && ST.filterMode) {
+    _firstFilterDone = true;
+    const hint = document.getElementById('mob-swipe-hint');
+    if (hint) { hint.classList.add('visible'); setTimeout(() => hint.classList.remove('visible'), 2500); }
   }
 }
+let _firstFilterDone = false;
 
 function toggleSub(k) {
-  ST.subActive[k] = !ST.subActive[k];
-  // Desktop sub-chip
-  document.getElementById('subchip-' + k)?.classList.toggle('active', ST.subActive[k]);
+  // Najdi všechny sourozence (subkategorie stejné rodičovské kategorie)
+  const parentKey = Object.keys(CAT_CFG).find(c => CAT_CFG[c].subs?.[k]);
+  const sibs = parentKey ? Object.keys(CAT_CFG[parentKey].subs) : [];
+  const wasActive = !!ST.subActive[k];
+
+  if (!wasActive) {
+    // Zapínáme → exclusive: vypni ostatní, zapni tuto
+    sibs.forEach(s => {
+      ST.subActive[s] = (s === k);
+      document.getElementById('subchip-' + s)?.classList.toggle('active', s === k);
+    });
+  } else {
+    // Vypínáme → reset: zapni všechny
+    sibs.forEach(s => {
+      ST.subActive[s] = true;
+      document.getElementById('subchip-' + s)?.classList.add('active');
+    });
+  }
   renderPOI();
   renderResults();
-  // Mobilní pills — překresli (aktualizuje active stav + zachová data-key sync)
   renderMobSubcats();
 }
 

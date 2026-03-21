@@ -135,9 +135,11 @@ const CAT_CFG = {
   sport:  { label:'Sport & volný čas', color:'#10b981', icon:'⚽', subs:{
     sport_ven: { label:'Venkovní sport', icon:'⚽', color:'#10b981' },
     sport_hal: { label:'Hala',           icon:'🏋️', color:'#059669' },
-    detske:    { label:'Dětské hřiště',  icon:'🛝', color:'#34d399' },
+    posilovna: { label:'Posilovna', icon:'🏋️', color:'#f97316' },
+    detske:    { label:'Dětské hřiště',  icon:'🎠', color:'#34d399' },
     turistika: { label:'Turistika',      icon:'🥾', color:'#f59e0b' },
     bar:        { label:'Bar & koktejly',  icon:'🍸', color:'#a855f7' },
+    motocross: { label:'Motocross', icon:'🏍️', color:'#ef4444' },
   }},
   urad:   { label:'Úřady & instituce', color:'#3b82f6', icon:'🏛️', subs:{
     urad_obec: { label:'Obecní úřad', icon:'🏛️', color:'#3b82f6' },

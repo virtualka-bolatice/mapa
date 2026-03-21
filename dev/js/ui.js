@@ -244,6 +244,9 @@ function geolocate() {
   // Toggle: klik znovu = vypni
   if (_geoActive) {
     _stopGeo();
+    // Pojistka: odstraň marker/kruh z mapy i kdyby _stopGeo selhal
+    if (_geoMarker) { try { map.removeLayer(_geoMarker); } catch(e){} _geoMarker = null; }
+    if (_geoCircle) { try { map.removeLayer(_geoCircle); } catch(e){} _geoCircle = null; }
     btn?.classList.remove('on');
     document.getElementById('nav-pick-btn')?.classList.remove('on');
     if (typeof cancelNavPick === 'function') cancelNavPick();

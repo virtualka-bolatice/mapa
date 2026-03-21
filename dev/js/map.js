@@ -43,6 +43,18 @@ const map = L.map('map', {
 
 L.control.zoom ({ position: 'bottomright' }).addTo(map);
 L.control.scale({ position: 'bottomleft', imperial: false, metric: true }).addTo(map);
+// ── DVOJITÉ KLIKNUTÍ — zoom in; na mobilu long-press-dblclick = zoom out ──
+// Desktop: dblclick = +1, (Ctrl/Alt)+dblclick = -1
+// Mobil: standard dblclick = +1; pro oddálení použij pinch nebo zoom tlačítka
+map.on('dblclick', (e) => {
+  if (typeof msrOn !== 'undefined' && msrOn) return;
+  e.originalEvent.preventDefault();
+  const z = map.getZoom();
+  const zout = e.originalEvent.ctrlKey || e.originalEvent.altKey || e.originalEvent.shiftKey;
+  map.setZoomAround(e.containerPoint, z + (zout ? -1 : 1), { animate: true, duration: 0.3 });
+});
+map.doubleClickZoom.disable();
+
 
 // ── DESKTOP WHEEL OPRAVY ─────────────────────────────────────────
 // scrollWheelZoom a Shift+wheel rotace musí být explicitně povoleny.

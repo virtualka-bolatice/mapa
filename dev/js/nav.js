@@ -366,6 +366,7 @@ async function _startNav(tLat,tLng,tName,mode,driveRoute,walkRoute) {
   const _dr=(driveRoute??_fetchedDriveRoute)??null;
   const _wr=(walkRoute??_fetchedWalkRoute)??null;
   clearNav();
+  map.closePopup();
   _navMode=mode; _coneVisible=true;
   const route=mode==='driving'?_dr:_wr;
   if(!route){badge('❌ Trasa nenalezena — vyber cíl znovu');return;}
