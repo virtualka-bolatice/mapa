@@ -213,7 +213,7 @@ function buildPOIPopup(p, color, icon, lat, lng) {
   if (p.adresa) rows += prow('📍', p.adresa);
   if (p.tel)    rows += prow('📞', `<a href="tel:${p.tel}">${_fmtNum(p.tel)}</a>`);
   if (p.provoz) rows += prow('🕐', p.provoz);
-  if (p.web)    rows += prow('🌐', `<a href="${p.web}" target="_blank">${p.web.replace(/https?:\/\//,'')}</a>`);
+  if (p.web)    rows += prow('🌐', `<a href="${p.web}" target="_blank">${p.web.replace(/https?:\/\//,'').replace(/\/$/,'')}</a>`);
   if (p.email)  rows += prow('✉️', `<a href="mailto:${p.email}">${p.email}</a>`);
   if (p.popis)  rows += prow('ℹ️', p.popis);
 
