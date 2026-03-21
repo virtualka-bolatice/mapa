@@ -218,8 +218,8 @@ function buildPOIPopup(p, color, icon, lat, lng) {
   if (p.popis)  rows += prow('ℹ️', p.popis);
 
   const navGoogle = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((p.nazev||'') + ' Bolatice')}`;
-  // Bezpečně escapuj název pro inline onclick
-  const safeName = (p.nazev||'Cíl').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+  // Název přes data-atribut — bezpečné pro libovolné znaky
+  const safeNameAttr = (p.nazev||'Cíl').replace(/&/g,'&amp;').replace(/"/g,'&quot;');
 
   return `
     ${foto}
@@ -229,7 +229,7 @@ function buildPOIPopup(p, color, icon, lat, lng) {
     </div>
     ${rows ? `<div class="ppop-div"></div><div style="padding-bottom:6px">${rows}</div>` : ''}
     <div class="ppop-action-bar">
-      <button class="ppop-action-btn nav" onclick="navigateTo(${lat},${lng},'${safeName}')" title="Navigovat">
+      <button class="ppop-action-btn nav ppop-nav-btn" data-lat="${lat}" data-lng="${lng}" data-name="${safeNameAttr}" title="Navigovat" onclick="navigateTo(+this.dataset.lat,+this.dataset.lng,this.dataset.name)">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>
         <span>Navigovat</span>
       </button>
