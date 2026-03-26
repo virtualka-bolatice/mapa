@@ -19,6 +19,38 @@ const ST = {
 };
 Object.keys(CAT_CFG).forEach(k => ST.catActive[k] = true);
 
+// ── Multi-kategorie helper ────────────────────────────────────────
+// Pole 'kategorie' i 'podkategorie' mohou mít více hodnot oddělených čárkou.
+// Příklad: "kadernictvi,kosmetika" nebo "sluzby,zdravi"
+function _splitField(val) {
+  if (!val) return [];
+  return String(val).split(',').map(s => s.trim()).filter(Boolean);
+}
+// Vrátí hlavní kategorii POI (první nebo odvozená z podkategorie)
+function _poiKat(p) {
+  const kats = _splitField(p.kategorie);
+  if (kats.length) return kats[0];
+  const sub = _splitField(p.podkategorie)[0];
+  if (!sub) return null;
+  for (const [k, cat] of Object.entries(CAT_CFG)) {
+    if (cat.subs?.[sub]) return k;
+  }
+  return null;
+}
+// Vrátí pole VŠECH podkategorií POI
+function _poiSubs(p) { return _splitField(p.podkategorie); }
+// Vrátí pole VŠECH kategorií POI (explicitní + odvozené z podkategorií)
+function _poiKats(p) {
+  const explicit = _splitField(p.kategorie);
+  const fromSubs = _poiSubs(p).map(sub => {
+    for (const [k, cat] of Object.entries(CAT_CFG)) {
+      if (cat.subs?.[sub]) return k;
+    }
+    return null;
+  }).filter(Boolean);
+  return [...new Set([...explicit, ...fromSubs])];
+}
+
 // ── IKONY ────────────────────────────────────────────────────────
 let _iconSeq = 0;
 function makeIcon(emoji, color, sz = 33) {
@@ -67,8 +99,9 @@ async function loadPOI() {
   // Inicializuj subActive pro VŠECHNY podkategorie na true
   // (bez tohoto by první klik na toggle nastavil z undefined na true místo false)
   ST.features.forEach(f => {
-    const k = f.properties.podkategorie;
-    if (k && ST.subActive[k] === undefined) ST.subActive[k] = true;
+    _poiSubs(f.properties).forEach(k => {
+      if (ST.subActive[k] === undefined) ST.subActive[k] = true;
+    });
   });
   Object.entries(CAT_CFG).forEach(([, cat]) => {
     if (cat.subs) Object.keys(cat.subs).forEach(k => { if (ST.subActive[k] === undefined) ST.subActive[k] = true; });
@@ -132,16 +165,24 @@ function renderPOI() {
 
   ST.features.forEach(f => {
     const p   = f.properties;
-    const cat = CAT_CFG[p.kategorie];
-    if (!cat || !ST.catActive[p.kategorie]) return;
-    if (p.podkategorie && ST.subActive[p.podkategorie] === false) return;
+    const kats = _poiKats(p);
+    const subs = _poiSubs(p);
+    // Zobraz pokud ALESPOŇ JEDNA kategorie aktivní
+    const katOk = kats.length === 0 || kats.some(k => ST.catActive[k]);
+    if (!katOk) return;
+    // Filtr subkategorií — skryj pouze pokud VŠECHNY subkategorie neaktivní
+    if (subs.length && subs.every(s => ST.subActive[s] === false)) return;
+    const primaryKat = kats[0] || null;
+    const cat = primaryKat ? CAT_CFG[primaryKat] : null;
     if (ST.searchQ) {
       const q = ST.searchQ.toLowerCase();
       if (![(p.nazev||''),(p.adresa||''),(p.typ||'')].some(s => s.toLowerCase().includes(q))) return;
     }
 
-    let color = cat.color, icon = cat.icon;
-    const sc  = cat.subs?.[p.podkategorie];
+    let color = cat?.color || '#888', icon = cat?.icon || '📍';
+    const firstSub = subs[0];
+    const sc = firstSub ? (cat?.subs?.[firstSub] ||
+      Object.values(CAT_CFG).find(c=>c.subs?.[firstSub])?.subs?.[firstSub]) : null;
     if (sc) { color = sc.color; icon = sc.icon; }
 
     const [lng, lat] = f.geometry.coordinates;
@@ -176,9 +217,16 @@ function _fmtNum(s) {
 }
 
 function buildPOIPopup(p, color, icon, lat, lng) {
-  const cat  = CAT_CFG[p.kategorie];
-  const sc   = cat?.subs?.[p.podkategorie];
-  const typ  = p.typ || sc?.label || cat?.label || '';
+  const kats = _poiKats(p);
+  const subs = _poiSubs(p);
+  const cat  = kats[0] ? CAT_CFG[kats[0]] : null;
+  const firstSub = subs[0];
+  const sc = firstSub ? (cat?.subs?.[firstSub] ||
+    Object.values(CAT_CFG).find(c=>c.subs?.[firstSub])?.subs?.[firstSub]) : null;
+  const typ  = p.typ || subs.map(s => {
+    for (const c of Object.values(CAT_CFG)) if (c.subs?.[s]) return c.subs[s].label;
+    return s;
+  }).join(' · ') || cat?.label || '';
   // Foto: podporuje jedno nebo více oddělených čárkou (foto1.jpg,foto2.webp)
   const _fotoValid = (s) => s && /\.(png|jpg|jpeg|webp)$/i.test(s.trim());
   const _fotoUrl   = (s) => {
@@ -309,7 +357,9 @@ document.addEventListener('keydown', e => {
 function updateCounts() {
   const c = {};
   Object.keys(CAT_CFG).forEach(k => c[k] = 0);
-  ST.features.forEach(f => { const k = f.properties.kategorie; if (k in c) c[k]++; });
+  ST.features.forEach(f => {
+    _poiKats(f.properties).forEach(k => { if (k in c) c[k]++; });
+  });
 
   Object.entries(c).forEach(([k, v]) => {
     const el = document.getElementById('cnt-' + k);
@@ -439,9 +489,9 @@ function _renderResultsInto(listId, cntId) {
 
   const visible = ST.features.filter(f => {
     const p = f.properties;
-    if (!ST.catActive[p.kategorie]) return false;
-    // Filtr subkategorií — všechny kategorie
-    if (p.podkategorie && ST.subActive[p.podkategorie] === false) return false;
+    const _kats = _poiKats(p), _subs = _poiSubs(p);
+    if (_kats.length && !_kats.some(k => ST.catActive[k])) return false;
+    if (_subs.length && _subs.every(s => ST.subActive[s] === false)) return false;
     if (ST.searchQ) {
       const q = ST.searchQ.toLowerCase();
       if (![(p.nazev||''),(p.adresa||''),(p.typ||'')].some(s => s.toLowerCase().includes(q))) return false;
@@ -525,10 +575,6 @@ function toggleCat(k) {
   renderMobCatIcons();
   renderMobSubcats();
 
-  // Na mobilu: vyjeď BS nahoru plynule (výsledky jsou viditelné)
-  if (typeof isMobile === 'function' && isMobile()) {
-    expandBS();
-  }
 }
 
 function toggleSub(k) {
