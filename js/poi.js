@@ -97,7 +97,6 @@ async function loadPOI() {
     });
 
   // Inicializuj subActive pro VŠECHNY podkategorie na true
-  // (bez tohoto by první klik na toggle nastavil z undefined na true místo false)
   ST.features.forEach(f => {
     _poiSubs(f.properties).forEach(k => {
       if (ST.subActive[k] === undefined) ST.subActive[k] = true;
@@ -145,7 +144,6 @@ function buildSubUI() {
       d.onclick     = () => toggleSub(k);
       el.appendChild(d);
     }
-    // Skryj šipku pokud žádné subkategorie nemají POI
     const arr = document.getElementById('cat-arr-' + catKey);
     if (arr) arr.style.display = el.children.length ? '' : 'none';
   }
@@ -158,7 +156,6 @@ function toggleSubList(catKey) {
 
 // ── RENDEROVÁNÍ ──────────────────────────────────────────────────
 function renderPOI() {
-  // Standardní cleanup — poiGroup.clearLayers() odstraní všechny markery
   poiGroup.clearLayers();
 
   if (typeof advancedMode !== 'undefined' && advancedMode) return;
@@ -167,10 +164,8 @@ function renderPOI() {
     const p   = f.properties;
     const kats = _poiKats(p);
     const subs = _poiSubs(p);
-    // Zobraz pokud ALESPOŇ JEDNA kategorie aktivní
     const katOk = kats.length === 0 || kats.some(k => ST.catActive[k]);
     if (!katOk) return;
-    // Filtr subkategorií — skryj pouze pokud VŠECHNY subkategorie neaktivní
     if (subs.length && subs.every(s => ST.subActive[s] === false)) return;
     const primaryKat = kats[0] || null;
     const cat = primaryKat ? CAT_CFG[primaryKat] : null;
@@ -188,15 +183,13 @@ function renderPOI() {
     const [lng, lat] = f.geometry.coordinates;
     const m = L.marker([lat, lng], {
       icon: makeIcon(icon, color),
-      rotateWithView: false,   // leaflet-rotate: PIN vždy vzpřímeně bez ohledu na bearing
+      rotateWithView: false,
       interactive: true,
     });
     m.feature = f;
     m.bindPopup(buildPOIPopup(p, color, icon, lat, lng), { maxWidth: 280, minWidth: 220 });
     poiGroup.addLayer(m);
   });
-
-  // Žádná counter-rotace není potřeba — rotateWithView:false to řeší
 }
 
 // ── POI POPUP ────────────────────────────────────────────────────
@@ -204,14 +197,11 @@ function prow(i, v) {
   return `<div class="ppop-row"><div class="ppop-i">${i}</div><div class="ppop-v">${v}</div></div>`;
 }
 
-// ── Formátování čísel — skupiny po 3 (725516959 → 725 516 959) ──
 function _fmtNum(s) {
   if (!s) return s;
   const str = String(s).trim();
-  // Telefonní číslo: formatuj čistě číselnou část, zachovej +420 prefix
   return str.replace(/(\+?\d+)/g, n => {
     const digits = n.replace(/\D/g, '');
-    // Skupiny po 3 zprava
     return n.replace(digits, digits.replace(/\B(?=(\d{3})+(?!\d))/g, ' '));
   });
 }
@@ -227,7 +217,7 @@ function buildPOIPopup(p, color, icon, lat, lng) {
     for (const c of Object.values(CAT_CFG)) if (c.subs?.[s]) return c.subs[s].label;
     return s;
   }).join(' · ') || cat?.label || '';
-  // Foto: podporuje jedno nebo více oddělených čárkou (foto1.jpg,foto2.webp)
+  
   const _fotoValid = (s) => s && /\.(png|jpg|jpeg|webp)$/i.test(s.trim());
   const _fotoUrl   = (s) => {
     s = s.trim();
@@ -254,15 +244,28 @@ function buildPOIPopup(p, color, icon, lat, lng) {
 
   let rows = '';
   if (p.adresa) rows += prow('📍', p.adresa);
-  if (p.tel)    rows += prow('📞', `<a href="tel:${p.tel}">${_fmtNum(p.tel)}</a>`);
+  
+  // ── MULTI-TELEFON FIX ──────────────────────────────────────────
+  if (p.tel) {
+    // Rozdělíme podle čárky, ořízneme mezery a vytvoříme odkazy
+    const telHtml = String(p.tel).split(',').map(t => {
+      const cleanT = t.trim();
+      if (!cleanT) return '';
+      const linkT = cleanT.replace(/\s+/g, ''); // tel: odkaz by neměl obsahovat mezery kvůli mobilům
+      return `<a href="tel:${linkT}">${_fmtNum(cleanT)}</a>`;
+    }).filter(Boolean).join('<br>'); // oddělíme řádkováním pod sebou
+    
+    rows += prow('📞', telHtml);
+  }
+  // ───────────────────────────────────────────────────────────────
+
   if (p.provoz) rows += prow('🕐', p.provoz);
   if (p.web)    rows += prow('🌐', `<a href="${p.web}" target="_blank">${p.web.replace(/https?:\/\//,'').replace(/\/$/,'')}</a>`);
   if (p.email)  rows += prow('✉️', `<a href="mailto:${p.email}">${p.email}</a>`);
   if (p.popis)  rows += prow('ℹ️', p.popis);
 
   const navGoogle = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((p.nazev||'') + ' Bolatice')}`;
-  // Název přes data-atribut — bezpečné pro libovolné znaky
-  const safeNameAttr = (p.nazev||'Cíl').replace(/&/g,'&amp;').replace(/"/g,'&quot;');
+  const safeNameAttr = (p.nazev||'Cíl').replace(/&/g,'&').replace(/"/g,'"');
 
   return `
     ${foto}
@@ -333,7 +336,6 @@ function closeLB() {
   _lbGallery = []; _lbIdx = 0;
 }
 
-// Popup foto slider
 function ppopFoto(wrapId, dir, e) {
   e?.stopPropagation();
   const wrap = document.getElementById(wrapId);
@@ -405,7 +407,6 @@ function renderMobCatIcons(counts) {
 
   const entries = Object.entries(CAT_CFG);
 
-  // ── Pokud ikony již existují: jen aktualizuj třídy (NO BLINK!) ──
   if (el.children.length === entries.length) {
     Array.from(el.children).forEach(ico => {
       const k = ico.dataset.cat;
@@ -420,7 +421,6 @@ function renderMobCatIcons(counts) {
     return;
   }
 
-  // ── První render: postav celé DOM ─────────────────────────────
   el.innerHTML = entries.map(([k, cat]) => {
     const isActive = !!ST.catActive[k];
     const isDimmed = ST.filterMode && ST.filterKey !== k;
@@ -434,7 +434,6 @@ function renderMobCatIcons(counts) {
   }).join('');
 }
 
-
 // ── MOBILNÍ SUBKATEGORIE — pills nad výsledky ────────────────────
 function renderMobSubcats() {
   const el = document.getElementById('mob-subcat-wrap');
@@ -442,12 +441,21 @@ function renderMobSubcats() {
   el.innerHTML = '';
 
   // Skryj v pokročilém režimu
-  if (typeof advancedMode !== 'undefined' && advancedMode) return;
+  if (typeof advancedMode !== 'undefined' && advancedMode) {
+      _adjustBottomSheetPeek(el);
+      return;
+  }
 
   // Zobrazit jen pokud filtrujeme solo kategorii se subkategoriemi
-  if (!ST.filterMode || !ST.filterKey) return;
+  if (!ST.filterMode || !ST.filterKey) {
+      _adjustBottomSheetPeek(el);
+      return;
+  }
   const cat = CAT_CFG[ST.filterKey];
-  if (!cat?.subs || Object.keys(cat.subs).length === 0) return;
+  if (!cat?.subs || Object.keys(cat.subs).length === 0) {
+      _adjustBottomSheetPeek(el);
+      return;
+  }
 
   // Spočítej POI v každé subkategorii aktivní kategorie
   const subCounts = {};
@@ -471,6 +479,44 @@ function renderMobSubcats() {
     pill.onclick     = () => toggleSub(k);
     el.appendChild(pill);
   }
+
+  // Po vykreslení zavoláme dynamickou úpravu výšky Bottom Sheetu
+  _adjustBottomSheetPeek(el);
+}
+
+// ── INOVATIVNÍ FIX: Dynamická úprava "peek" výšky Bottom Sheetu ──
+function _adjustBottomSheetPeek(subcatWrap) {
+  requestAnimationFrame(() => {
+    // Zkusíme najít hlavní obal Bottom Sheetu (podle běžných ID nebo tříd)
+    const bs = subcatWrap.closest('.bottom-sheet') || 
+               document.getElementById('bottom-sheet') || 
+               subcatWrap.closest('[id*="sheet"]') ||
+               subcatWrap.closest('[class*="sheet"]');
+
+    if (!bs) return;
+
+    // Pokud uživatel už bottom sheet ručně vytáhl (má např. třídu expanded), nebudeme to přepisovat
+    if (bs.classList.contains('expanded') || bs.classList.contains('open') || bs.classList.contains('active')) {
+      return;
+    }
+
+    // Spočítáme dynamicky potřebnou výšku: hlavička + kategorie + subkategorie + padding
+    const catIcons = document.getElementById('mob-cat-icons');
+    
+    // Základní rezerva (cca 45px) pro táhlo (drag handle) a běžné odsazení nahoře/dole
+    let neededHeight = 45; 
+
+    if (catIcons) neededHeight += catIcons.scrollHeight;
+    
+    // Pokud jsou subkategorie viditelné, přičteme jejich přesnou výšku + trochu mezeru
+    if (subcatWrap && subcatWrap.innerHTML.trim() !== '') {
+      neededHeight += subcatWrap.scrollHeight + 16;
+    }
+
+    // Plynule upravíme výšku sheetu (bude povytažený jen po filtry)
+    bs.style.transition = 'height 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)';
+    bs.style.height = `${neededHeight}px`;
+  });
 }
 
 // ── VÝSLEDKY ─────────────────────────────────────────────────────
@@ -553,7 +599,6 @@ function toggleCat(k) {
       document.getElementById('chip-' + c)?.classList.toggle('dimmed', c !== k);
     });
   } else if (ST.filterKey === k) {
-    // Deselect — reset subActive pro všechny subkategorie vyfiltrované kategorie
     const prevCat = CAT_CFG[k];
     if (prevCat?.subs) Object.keys(prevCat.subs).forEach(s => { ST.subActive[s] = true; });
     ST.filterMode = false; ST.filterKey = null;
@@ -574,7 +619,6 @@ function toggleCat(k) {
   renderResults();
   renderMobCatIcons();
   renderMobSubcats();
-
 }
 
 function toggleSub(k) {
@@ -582,14 +626,12 @@ function toggleSub(k) {
   const subs = parentKey ? Object.keys(CAT_CFG[parentKey].subs) : [k];
 
   if (!ST.subFilterMode) {
-    // Zapni exclusive sub-filter + skryj ostatní kategorie
     ST.subFilterMode = true; ST.subFilterKey = k;
     subs.forEach(s => {
       ST.subActive[s] = (s === k);
       document.getElementById('subchip-' + s)?.classList.toggle('active', s === k);
       document.getElementById('subchip-' + s)?.classList.toggle('dimmed', s !== k);
     });
-    // Skryj ostatní kategorie
     if (parentKey) {
       Object.keys(CAT_CFG).forEach(c => {
         ST.catActive[c] = (c === parentKey);
@@ -598,24 +640,20 @@ function toggleSub(k) {
       });
     }
   } else if (ST.subFilterKey === k) {
-    // Reset
     ST.subFilterMode = false; ST.subFilterKey = null;
     subs.forEach(s => {
       ST.subActive[s] = true;
       document.getElementById('subchip-' + s)?.classList.add('active');
       document.getElementById('subchip-' + s)?.classList.remove('dimmed');
     });
-    // Obnov všechny kategorie
     Object.keys(CAT_CFG).forEach(c => {
       ST.catActive[c] = true;
       document.getElementById('chip-' + c)?.classList.add('active');
       document.getElementById('chip-' + c)?.classList.remove('dimmed');
     });
   } else {
-    // Přepni — může být jiná subkat jiné kategorie
     const prevParent = Object.keys(CAT_CFG).find(c => CAT_CFG[c].subs?.[ST.subFilterKey]);
     if (prevParent && prevParent !== parentKey) {
-      // Plný reset předchozí kategorie: všechny subkategorie zapnout, kategorie oddimnout
       if (CAT_CFG[prevParent]?.subs) {
         Object.keys(CAT_CFG[prevParent].subs).forEach(s => {
           ST.subActive[s] = true;
@@ -623,11 +661,9 @@ function toggleSub(k) {
           document.getElementById('subchip-' + s)?.classList.remove('dimmed');
         });
       }
-      // Zavři rozvinutý sub-wrap předchozí kategorie
       document.getElementById('sub-' + prevParent)?.classList.remove('x');
     }
     ST.subFilterKey = k;
-    // Aktivuj novou kategorii, skryj ostatní
     subs.forEach(s => {
       ST.subActive[s] = (s === k);
       document.getElementById('subchip-' + s)?.classList.toggle('active', s === k);
@@ -645,7 +681,6 @@ function toggleSub(k) {
 }
 
 function doSearch(q) {
-  // V pokročilém režimu vyhledávání POI nedostupné
   if (typeof advancedMode !== 'undefined' && advancedMode) {
     ST.searchQ = '';
     renderResults();
