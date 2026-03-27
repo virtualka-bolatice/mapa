@@ -87,14 +87,20 @@ if (_rotatePlugin) {
 }
 
 // ── PODKLADOVÉ MAPY ──────────────────────────────────────────────
+const ORTO_URL = 'https://ags.cuzk.cz/arcgis1/rest/services/ORTOFOTO_WM/MapServer/tile/{z}/{y}/{x}';
+
 const TILES = {
   mapa: L.tileLayer(
     'https://{s}.basemaps.cartocdn.com/rastertiles/voyager_labels_under/{z}/{x}/{y}{r}.png',
     { attribution: '© OpenStreetMap © CARTO', subdomains: 'abcd', maxZoom: 20, minZoom: 8 }
   ),
   orto: L.tileLayer(
-    'https://ags.cuzk.cz/arcgis1/rest/services/ORTOFOTO_WM/MapServer/tile/{z}/{y}/{x}',
-    { attribution: '© <a href="https://www.cuzk.cz" target="_blank">ČÚZK</a> Ortofotomapa ČR', maxZoom: 20, minZoom: 8 }
+    ORTO_URL,
+    {
+      attribution: '© <a href="https://www.cuzk.cz" target="_blank" rel="noopener">ČÚZK</a> Ortofotomapa ČR',
+      maxZoom: 20,
+      minZoom: 8
+    }
   ),
 };
 
@@ -103,18 +109,82 @@ const ORTO_FALLBACK = L.tileLayer(
   { attribution: '© Esri World Imagery (záloha)', maxZoom: 20, minZoom: 8 }
 );
 
-let activeTile         = 'mapa';
+let activeTile = 'mapa';
 let ortoFallbackActive = false;
 
-// Automatický fallback pokud ČÚZK nereaguje
+// řízení tichého obnovování
+let ortoRestoreTimer = null;
+let ortoRetryDelay = 12000;   // start: 12 s
+let ortoProbeBusy = false;    // proti duplicitním probe requestům
+const ORTO_RETRY_MAX = 60000; // max: 60 s
+
 TILES.orto.on('tileerror', () => {
-  if (!ortoFallbackActive && activeTile === 'orto') {
-    console.warn('ČÚZK ortofoto nedostupné, přepínám na Esri zálohu');
-    ortoFallbackActive = true;
-    map.removeLayer(TILES.orto);
-    ORTO_FALLBACK.addTo(map);
-    badge('⚠️ ČÚZK ortofoto nedostupné — použit Esri World Imagery');
+  if (activeTile !== 'orto' || ortoFallbackActive) return;
+
+  console.warn('ČÚZK ortofoto nedostupné, přepínám na Esri zálohu');
+  ortoFallbackActive = true;
+
+  map.removeLayer(TILES.orto);
+  ORTO_FALLBACK.addTo(map);
+  badge('⚠️ ČÚZK ortofoto nedostupné — záloha Esri');
+
+  if (ortoRestoreTimer) {
+    clearTimeout(ortoRestoreTimer);
+    ortoRestoreTimer = null;
   }
+
+  const scheduleRestoreProbe = () => {
+    if (!ortoFallbackActive || activeTile !== 'orto') return;
+    if (ortoRestoreTimer || ortoProbeBusy) return;
+
+    ortoRestoreTimer = setTimeout(() => {
+      ortoRestoreTimer = null;
+      if (!ortoFallbackActive || activeTile !== 'orto' || ortoProbeBusy) return;
+
+      ortoProbeBusy = true;
+
+      const z = Math.max(map.getZoom(), 8);
+      const p = map.project(map.getCenter(), z).divideBy(256).floor();
+      const probeUrl = ORTO_URL
+        .replace('{z}', z)
+        .replace('{x}', p.x)
+        .replace('{y}', p.y);
+
+      // tichý probe bez zásahu do UI
+      const probe = new Image();
+      probe.onload = () => {
+        ortoProbeBusy = false;
+        if (!ortoFallbackActive || activeTile !== 'orto') return;
+
+        if (ortoRestoreTimer) {
+          clearTimeout(ortoRestoreTimer);
+          ortoRestoreTimer = null;
+        }
+
+        map.removeLayer(ORTO_FALLBACK);
+        TILES.orto.addTo(map);
+        ortoFallbackActive = false;
+        ortoRetryDelay = 12000;
+
+        badge('✅ ČÚZK ortofoto obnoveno');
+        qgisLayers.forEach(l => { if (l.visible && l.leaflet) l.leaflet.bringToFront(); });
+        poiGroup.bringToFront();
+      };
+
+      probe.onerror = () => {
+        ortoProbeBusy = false;
+        if (!ortoFallbackActive || activeTile !== 'orto') return;
+
+        // adaptivní zpomalení, aby se síť zbytečně netahala
+        ortoRetryDelay = Math.min(Math.round(ortoRetryDelay * 1.5), ORTO_RETRY_MAX);
+        scheduleRestoreProbe();
+      };
+
+      probe.src = `${probeUrl}?_=${Date.now()}`;
+    }, ortoRetryDelay);
+  };
+
+  scheduleRestoreProbe();
 });
 
 TILES.mapa.addTo(map);
@@ -135,7 +205,8 @@ function setTile(key) {
   poiGroup.bringToFront();
 
   document.querySelectorAll('.tbtn').forEach(b => b.className = 'tbtn off');
-  document.getElementById('tbtn-' + key).className = 'tbtn on';
+  const _tbtn = document.getElementById('tbtn-' + key);
+  if (_tbtn) _tbtn.className = 'tbtn on';
   if (typeof _syncLsTileBtn === 'function') _syncLsTileBtn();
 }
 

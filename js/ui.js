@@ -34,12 +34,23 @@ function _bsFullH() {
 }
 function _bsPeekY()  { return Math.max(0, _bsFullH() - BS_PEEK); }
 
+// BS sidebar element cache — ne dotazovat DOM při každém pohybu
+let _bsEl = null;
+function _getBsEl() { return _bsEl || (_bsEl = document.getElementById('sidebar')); }
+
 function _bsSetY(y, animate = false) {
-  const bs = document.getElementById('sidebar');
+  const bs = _getBsEl();
   if (!bs) return;
+  // will-change jen při animaci, jinak odeber (šetří GPU paměť)
+  bs.style.willChange = animate ? 'transform' : 'auto';
   bs.style.transition = animate ? 'transform .32s cubic-bezier(.4,0,.2,1)' : 'none';
   bs.style.transform  = `translateY(${y}px)`;
   bsCurrentY = y;
+  if (animate) {
+    // Uvolni will-change po animaci
+    const cleanup = () => { bs.style.willChange = 'auto'; bs.removeEventListener('transitionend', cleanup); };
+    bs.addEventListener('transitionend', cleanup, { once: true });
+  }
 }
 
 function _bsSnapTo(expanded, animate = true) {
@@ -195,11 +206,6 @@ function closeMobSearch() {
   if (inp) { inp.value = ''; doSearch(''); }
   const res = document.getElementById('mob-results');
   if (res) res.innerHTML = '';
-}
-
-// Zavře overlay bez resetování search query ani výsledků
-function closeMobSearchKeepQuery() {
-  document.getElementById('mob-search')?.classList.remove('open');
 }
 
 // ════════════════════════════════════════════════════════════════
@@ -405,14 +411,15 @@ function ld(msg) {
   if (el) el.textContent = msg;
 }
 
+// ── Mobile class sync — globální scope (přístupné pro resize handler) ──
+function _syncMobileClass() {
+  document.body.classList.toggle('is-mobile', isMobile());
+}
+
 // ════════════════════════════════════════════════════════════════
 //  INICIALIZACE
 // ════════════════════════════════════════════════════════════════
 window.addEventListener('load', async () => {
-  // Desktop/mobil class na body — pro CSS cílení
-  function _syncMobileClass() {
-    document.body.classList.toggle('is-mobile', isMobile());
-  }
   _syncMobileClass();
   window.addEventListener('resize', _syncMobileClass);
   ld('Načítám datové vrstvy…');
@@ -422,9 +429,11 @@ window.addEventListener('load', async () => {
   ld('Načítám data…');
   try { initQGISLayers(); } catch(e) { console.error('initQGISLayers:', e); }
 
-  try { await loadPOI(); } catch(e) { console.warn('loadPOI:', e); }
+  try {
+    if (typeof loadPOI === 'function') await loadPOI();
+  } catch(e) { console.warn('loadPOI:', e); }
 
-  poiGroup.bringToFront();
+  if (typeof poiGroup !== 'undefined') poiGroup.bringToFront();
   updateLayoutPositions();
   _syncCatsAccordion();
 
@@ -518,4 +527,54 @@ function _animateML(targetPx) {
     if (t < 1) _mlAnimFrame = requestAnimationFrame(step);
   }
   _mlAnimFrame = requestAnimationFrame(step);
+}
+
+// ── DOUBLE-TAP ZOOM ──────────────────────────────────────────────
+// Inovativní: 2x tap zoomuje IN, 2x tap se Shift / 2 prsty = zoom OUT
+// Funguje i v desktop modu na mobilu
+;(function() {
+  let _lastTap = 0, _tapTimer = null;
+  const THRESH = 280; // ms
+  document.getElementById('map')?.addEventListener('touchend', function(e) {
+    if (e.touches.length > 0) return; // multitouch
+    const now = Date.now();
+    if (_tapTimer) { clearTimeout(_tapTimer); _tapTimer = null; }
+    if (now - _lastTap < THRESH) {
+      e.preventDefault();
+      const touch = e.changedTouches[0];
+      const latlng = map.containerPointToLatLng([touch.clientX, touch.clientY]);
+      map.setView(latlng, map.getZoom() + 1, {animate: true});
+      _lastTap = 0;
+    } else {
+      _lastTap = now;
+      _tapTimer = setTimeout(() => { _lastTap = 0; }, THRESH + 50);
+    }
+  }, { passive: false });
+})();
+
+// ── Přizpůsob BS tak, aby byl viditelný mob-subcat-wrap ──────────
+// Používá dvě rAF pro jistotu že DOM je vyrenderován před měřením
+let _bsSnapPending = false;
+function _bsSnapToSubcat() {
+  if (!isMobile() || bsExpanded) return;
+  if (_bsSnapPending) return;          // deduplicate
+  _bsSnapPending = true;
+
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    _bsSnapPending = false;
+    const bs  = _getBsEl();
+    const sub = document.getElementById('mob-subcat-wrap');
+    if (!bs || !sub) return;
+
+    // Měříme offsetTop+offsetHeight pro přesnost (bez transform zkreslení)
+    const subBottom = sub.offsetTop + sub.offsetHeight + 20;  // +20px dýchat
+    const fullH     = bs.scrollHeight || bs.offsetHeight || 400;
+    const peekY     = Math.max(0, fullH - 105);
+    const snapY     = Math.min(peekY, Math.max(0, fullH - subBottom));
+
+    // Jen pokud je třeba posunout (hystereze 4px — zabrání přeskakování)
+    if (Math.abs((bsCurrentY || 0) - snapY) > 4) {
+      _bsSetY(snapY, true);
+    }
+  }));
 }

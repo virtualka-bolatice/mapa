@@ -245,34 +245,35 @@
       </div>
       <!-- Chips — sbalitelné kliknutím na filtrační ikonu -->
       <div class="ls-cat-body" id="ls-cat-body">
-      <div class="cat-chip active" id="chip-gastro" style="color:var(--gastro)" onclick="toggleCat('gastro')">
+      <div class="cat-chip active" id="chip-gastro" style="color:var(--gastro)" onclick="toggleCat('gastro')" ondblclick="event.stopPropagation();toggleSubList('gastro')">
         <div class="cat-dot"></div><span class="cat-chip-lbl">Gastronomie</span><span class="cat-cnt" id="cnt-gastro">0</span>
-        <span class="cat-arr" id="cat-arr-gastro" onclick="event.stopPropagation();toggleSubList('gastro')" style="padding:2px 4px;color:var(--gastro)">▶</span>
+        <span class="cat-arr" id="cat-arr-gastro" data-subcat="gastro" onclick="event.stopPropagation();toggleSubList('gastro')" style="padding:2px 4px;color:var(--gastro);transition:transform .2s">▶</span>
       </div>
       <div class="sub-wrap" id="sub-gastro"></div>
-      <div class="cat-chip active" id="chip-zdravi" style="color:var(--zdravi)" onclick="toggleCat('zdravi')">
+      <div class="cat-chip active" id="chip-zdravi" style="color:var(--zdravi)" onclick="toggleCat('zdravi')" ondblclick="event.stopPropagation();toggleSubList('zdravi')">
         <div class="cat-dot"></div><span class="cat-chip-lbl">Zdravotnictví</span><span class="cat-cnt" id="cnt-zdravi">0</span>
-        <span class="cat-arr" id="cat-arr-zdravi" onclick="event.stopPropagation();toggleSubList('zdravi')" style="padding:2px 4px;color:var(--zdravi)">▶</span>
+        <span class="cat-arr" id="cat-arr-zdravi" data-subcat="zdravi" onclick="event.stopPropagation();toggleSubList('zdravi')" style="padding:2px 4px;color:var(--zdravi);transition:transform .2s">▶</span>
       </div>
       <div class="sub-wrap" id="sub-zdravi"></div>
-      <div class="cat-chip active" id="chip-sport" style="color:var(--sport)" onclick="toggleCat('sport')">
+      <div class="cat-chip active" id="chip-sport" style="color:var(--sport)" onclick="toggleCat('sport')" ondblclick="event.stopPropagation();toggleSubList('sport')">
         <div class="cat-dot"></div><span class="cat-chip-lbl">Sport &amp; volný čas</span><span class="cat-cnt" id="cnt-sport">0</span>
-        <span class="cat-arr" id="cat-arr-sport" onclick="event.stopPropagation();toggleSubList('sport')" style="padding:2px 4px;color:var(--sport)">▶</span>
+        <span class="cat-arr" id="cat-arr-sport" data-subcat="sport" onclick="event.stopPropagation();toggleSubList('sport')" style="padding:2px 4px;color:var(--sport);transition:transform .2s">▶</span>
       </div>
       <div class="sub-wrap" id="sub-sport"></div>
-      <div class="cat-chip active" id="chip-urad" style="color:var(--urad)" onclick="toggleCat('urad')">
+      <div class="cat-chip active" id="chip-urad" style="color:var(--urad)" onclick="toggleCat('urad')" ondblclick="event.stopPropagation();toggleSubList('urad')">
         <div class="cat-dot"></div><span class="cat-chip-lbl">Úřady &amp; instituce</span><span class="cat-cnt" id="cnt-urad">0</span>
-        <span class="cat-arr" id="cat-arr-urad" onclick="event.stopPropagation();toggleSubList('urad')" style="padding:2px 4px;color:var(--urad)">▶</span>
+        <span class="cat-arr" id="cat-arr-urad" data-subcat="urad" onclick="event.stopPropagation();toggleSubList('urad')" style="padding:2px 4px;color:var(--urad);transition:transform .2s">▶</span>
       </div>
       <div class="sub-wrap" id="sub-urad"></div>
-      <div class="cat-chip active" id="chip-obchod" style="color:var(--obchod)" onclick="toggleCat('obchod')">
+      <div class="cat-chip active" id="chip-obchod" style="color:var(--obchod)" onclick="toggleCat('obchod')" ondblclick="event.stopPropagation();toggleSubList('obchod')">
         <div class="cat-dot"></div><span class="cat-chip-lbl">Obchody</span><span class="cat-cnt" id="cnt-obchod">0</span>
-        <span class="cat-arr" id="cat-arr-obchod" onclick="event.stopPropagation();toggleSubList('obchod')" style="padding:2px 4px;color:var(--obchod)">▶</span>
+        <span class="cat-arr" id="cat-arr-obchod" data-subcat="obchod" onclick="event.stopPropagation();toggleSubList('obchod')" style="padding:2px 4px;color:var(--obchod);transition:transform .2s">▶</span>
       </div>
       <div class="sub-wrap" id="sub-obchod"></div>
-      <div class="cat-chip active" id="chip-sluzby" style="color:var(--sluzby)" onclick="toggleCat('sluzby')">
+      <div class="cat-chip active" id="chip-sluzby" style="color:var(--sluzby)" onclick="toggleCat('sluzby')" ondblclick="event.stopPropagation();toggleSubList('sluzby')">
         <div class="cat-dot"></div><span class="cat-chip-lbl">Služby</span><span class="cat-cnt" id="cnt-sluzby">0</span>
-        <span class="cat-arr" id="cat-arr-sluzby" onclick="event.stopPropagation();toggleSubList('sluzby')" style="padding:2px 4px;color:var(--sluzby)">▶</span>
+        <span class="cat-arr" data-subcat="sluzby" onclick="event.stopPropagation();toggleSubList('sluzby')"
+              style="padding:2px 4px;color:var(--sluzby)">▶</span>
       </div>
       <div class="sub-wrap" id="sub-sluzby"></div>
       </div><!-- /ls-cat-body -->
@@ -293,6 +294,7 @@
   <div id="ls-bottom-bar" class="ls-only">
     <button id="ls-adv-btn" onclick="toggleAdvanced()" title="Pokročilý režim">⚙️</button>
     <button id="ls-tile-btn" onclick="lsTileToggle()">🗺 Mapa</button>
+    <button id="ls-wx-btn" onclick="wxToggle()" title="Počasí"><span id="ls-wx-ico">🌤️</span> <span id="ls-wx-temp"></span></button>
   </div>
 
   <!-- Desktop/portrait adv button -->
@@ -438,8 +440,21 @@
 <script src="data/POI_0.js" onerror="void 0"></script>
 <script src="js/ui.js"></script>
 
+
+<!-- ══ WEATHER WIDGET ══════════════════════════════════════════ -->
+<div id="wx-tooltip"></div>
+<div id="wx-fab" onclick="wxToggle()" title="Počasí">
+  <span id="wx-fab-ico">🌤️</span>
+  <span id="wx-fab-temp"></span>
+</div>
+<div id="wx-panel">
+  <div id="wx-widget"><div class="wx-loading">⏳ Načítám počasí…</div></div>
+</div>
+
+<script src="js/weather.js"></script>
+<script>window.addEventListener("load",()=>{ if(typeof initAladinWeather==="function") initAladinWeather(); });</script>
 <script>
-document.addEventListener('click', function() {
+document.addEventListener('click', () => {
   document.getElementById('stat-ostatni-wrap')?.classList.remove('open');
 });
 </script>
