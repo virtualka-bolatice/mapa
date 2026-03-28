@@ -22,6 +22,11 @@ Object.keys(CAT_CFG).forEach(k => ST.catActive[k] = true);
 // ── Multi-kategorie helper ────────────────────────────────────────
 // Pole 'kategorie' i 'podkategorie' mohou mít více hodnot oddělených čárkou.
 // Příklad: "kadernictvi,kosmetika" nebo "sluzby,zdravi"
+// Normalizace pro vyhledávání bez diakritiky
+function _norm(s) {
+  return (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9 ]/g,' ');
+}
+
 function _splitField(val) {
   if (!val) return [];
   return String(val).split(',').map(s => s.trim()).filter(Boolean);
@@ -126,41 +131,36 @@ async function loadPOI() {
 
 // ── SUBKATEGORIE SLUŽBY ──────────────────────────────────────────
 function buildSubUI() {
-  // Zobrazit chip pro každou podkategorii z CAT_CFG.sluzby.subs
-  // PLUS pro každou podkategorii naleznutou ve features (multi-sub)
-  const el = document.getElementById('sub-sluzby');
-  if (!el) return;
-
-  // Sbírej VŠECHNY podkategorie ze sluzby (config) + z features (multi-sub)
-  const subsToShow = new Set(Object.keys(CAT_CFG.sluzby.subs));
+  // Spočítej které podkategorie mají aspoň 1 POI objekt
+  // Zdroj: atribut "podkategorie" (může být comma-separated)
+  const subHasPOI = {};  // subKey → true
   ST.features.forEach(f => {
-    const kats = _poiKats(f.properties);
-    if (kats.includes('sluzby')) {
-      _poiSubs(f.properties).forEach(s => {
-        // Přidej jen pokud sub patří do sluzby (nebo je v features jako multi-sub)
-        if (CAT_CFG.sluzby.subs[s] || kats.includes('sluzby')) subsToShow.add(s);
-      });
-    }
+    _poiSubs(f.properties).forEach(s => { subHasPOI[s] = true; });
   });
 
-  el.innerHTML = '';
-  for (const k of subsToShow) {
-    // Najdi definici sub — buď v sluzby, nebo v jiné kategorii
-    let sub = CAT_CFG.sluzby.subs[k];
-    if (!sub) {
-      for (const cat of Object.values(CAT_CFG)) {
-        if (cat.subs?.[k]) { sub = cat.subs[k]; break; }
-      }
+  // Pro každou kategorii v CAT_CFG vykresli sub-wrap
+  for (const [catKey, cat] of Object.entries(CAT_CFG)) {
+    if (!cat.subs) continue;
+    const el = document.getElementById('sub-' + catKey);
+    if (!el) continue;
+    el.innerHTML = '';
+
+    for (const [k, sub] of Object.entries(cat.subs)) {
+      // Zobraz sub-chip POUZE pokud existuje alespoň 1 POI s touto podkategorií
+      if (!subHasPOI[k]) continue;
+      if (ST.subActive[k] === undefined) ST.subActive[k] = true;
+      const d = document.createElement('div');
+      d.className   = 'sub-chip' + (ST.subActive[k] ? ' active' : '');
+      d.id          = 'subchip-' + k;
+      d.style.color = sub.color;
+      d.innerHTML   = `<div class="sub-dot"></div><span>${sub.icon} ${sub.label}</span>`;
+      d.onclick     = () => toggleSub(k);
+      el.appendChild(d);
     }
-    if (!sub) continue;
-    if (ST.subActive[k] === undefined) ST.subActive[k] = true;
-    const d = document.createElement('span');
-    d.className   = 'sub-chip' + (ST.subActive[k] ? ' active' : '');
-    d.id          = 'subchip-' + k;
-    d.style.color = sub.color;
-    d.innerHTML   = `<div class="sub-dot"></div><span>${sub.icon} ${sub.label}</span>`;
-    d.onclick     = () => toggleSub(k);
-    el.appendChild(d);
+
+    // Skryj šipku pokud tato kategorie nemá žádné obsazené podkategorie
+    const arr = document.getElementById('cat-arr-' + catKey);
+    if (arr) arr.style.display = el.children.length ? '' : 'none';
   }
 }
 
@@ -205,8 +205,13 @@ function renderPOI() {
     const primaryKat = kats[0] || null;
     const cat = primaryKat ? CAT_CFG[primaryKat] : null;
     if (ST.searchQ) {
-      const q = ST.searchQ.toLowerCase();
-      if (![(p.nazev||''),(p.adresa||''),(p.typ||'')].some(s => s.toLowerCase().includes(q))) return;
+      const q = _norm(ST.searchQ);
+      const _c1 = CAT_CFG[p.kategorie], _sc1 = _poiSubs(p).map(s => {
+        for (const [,c] of Object.entries(CAT_CFG)) if (c.subs?.[s]) return c.subs[s].label; return s;
+      });
+      const _catLbl = _poiKats(p).map(k => CAT_CFG[k]?.label||'').join(' ');
+      if (![p.nazev,p.adresa,p.typ,p.popis,_catLbl,..._sc1]
+          .some(s => _norm(s).includes(q))) return;
     }
 
     let color = cat?.color || '#888', icon = cat?.icon || '📍';
@@ -405,28 +410,15 @@ function buildPOIPopup(p, color, icon, lat, lng) {
   // Název přes data-atribut — bezpečné pro libovolné znaky
   const safeNameAttr = (p.nazev||'Cíl').replace(/&/g,'&amp;').replace(/"/g,'&quot;');
 
-  const _status = _sched ? _getOpenStatus(_sched) : null;
-  const _statusCfg = {
-    open:    { label: 'Otevřeno',       cls: 'ppop-status-open',    dot: '#22c55e' },
-    closing: { label: 'Brzy zavírá',    cls: 'ppop-status-closing', dot: '#f59e0b' },
-    closed:  { label: 'Zavřeno',        cls: 'ppop-status-closed',  dot: '#ef4444' },
-  };
-  const _sc = _status ? _statusCfg[_status] : null;
-
   return `
     ${foto}
     <div class="ppop-head" style="background:linear-gradient(160deg,${color}22 0%,${color}06 50%,transparent 100%)">
       <div class="ppop-badge" style="background:${color}22;color:${color}">${icon} ${typ}</div>
       <div class="ppop-name">${p.nazev || 'Bez názvu'}</div>
-      ${_sc ? `<div class="ppop-status ${_sc.cls}">
-        <span class="ppop-status-dot" style="background:${_sc.dot}"></span>
-        <span class="ppop-status-lbl">${_sc.label}</span>
-        <button class="ppop-status-toggle" onclick="_ppopToggleSchedFromStatus(this)">🕐 Rozvrh ›</button>
-      </div>` : ''}
     </div>
     ${rows ? `<div class="ppop-div"></div><div style="padding-bottom:6px">${rows}</div>` : ''}
     ${_sched ? `
-    <button class="ppop-provoz-btn" onclick="_ppopToggleSched(this)" style="display:none">hidden-toggle</button>
+    <button class="ppop-provoz-btn" onclick="_ppopToggleSched(this)">🕐 Otevírací doba <span class="ppop-provoz-arr">›</span></button>
     <div class="ppop-schedule" id="ppsc-${fotoIdx}">
       ${_renderScheduleHtml(_sched)}
     </div>` : ''}
@@ -472,18 +464,6 @@ function _renderScheduleHtml(sched) {
 }
 
 // Toggle schedule panel inside popup
-
-function _ppopToggleSchedFromStatus(btn) {
-  const popup = btn.closest('.leaflet-popup-content');
-  if (!popup) return;
-  const panel = popup.querySelector('.ppop-schedule');
-  if (!panel) return;
-  const isOpen = panel.classList.contains('open');
-  panel.classList.toggle('open', !isOpen);
-  btn.classList.toggle('open', !isOpen);
-  btn.textContent = isOpen ? '🕐 Rozvrh ›' : '🕐 Rozvrh ✕';
-}
-
 function _ppopToggleSched(btn) {
   const popup = btn.closest('.leaflet-popup-content');
   if (!popup) return;
@@ -491,9 +471,6 @@ function _ppopToggleSched(btn) {
   if (!panel) return;
   const isOpen = panel.classList.contains('open');
   panel.classList.toggle('open', !isOpen);
-  // Rotate arrow on status toggle button
-  const statusToggle = popup.querySelector('.ppop-status-toggle');
-  if (statusToggle) statusToggle.classList.toggle('open', !isOpen);
   btn.classList.toggle('open', !isOpen);
   // Resize Leaflet popup to fit new content
   setTimeout(() => {
@@ -502,25 +479,6 @@ function _ppopToggleSched(btn) {
       if (lmap) lmap.eachLayer(l => l.getPopup?.()?.update?.());
     } catch(e) {}
   }, 300);
-}
-
-
-// ── Otevírací indikátor ─────────────────────────────────────────
-function _getOpenStatus(sched) {
-  if (!sched) return null;
-  const now = new Date();
-  const day = now.getDay();
-  const dayIdx = day === 0 ? 6 : day - 1;
-  const slots = sched[dayIdx];
-  if (!slots || slots.length === 0) return 'closed';
-  const hm = now.getHours() * 60 + now.getMinutes();
-  for (const sl of slots) {
-    const [fh, fm] = sl.from.split(':').map(Number);
-    const [th, tm] = sl.to.split(':').map(Number);
-    const from = fh * 60 + fm, to = th * 60 + tm;
-    if (hm >= from && hm < to) return (to - hm) <= 30 ? 'closing' : 'open';
-  }
-  return 'closed';
 }
 
 // ── LIGHTBOX ─────────────────────────────────────────────────────
@@ -687,12 +645,17 @@ function renderMobSubcats() {
   if (!cat?.subs || Object.keys(cat.subs).length === 0) return;
 
   // Spočítej POI v každé subkategorii aktivní kategorie
+  // Používá _poiSubs pro správné rozčlenění multi-podkategorií (kadernictvi,kosmetika → dvě)
   const subCounts = {};
   ST.features
-    .filter(f => f.properties.kategorie === ST.filterKey)
+    .filter(f => _poiKats(f.properties).includes(ST.filterKey))
     .forEach(f => {
-      const s = f.properties.podkategorie;
-      if (s) subCounts[s] = (subCounts[s] || 0) + 1;
+      _poiSubs(f.properties).forEach(s => {
+        // Zahrň jen subcategorie, které patří do aktivní kategorie
+        if (CAT_CFG[ST.filterKey]?.subs?.[s]) {
+          subCounts[s] = (subCounts[s] || 0) + 1;
+        }
+      });
     });
 
   for (const [k, sub] of Object.entries(cat.subs)) {
@@ -736,8 +699,13 @@ function _renderResultsInto(listId, cntId) {
       if (_subs.length && _subs.every(s => ST.subActive[s] === false)) return false;
     }
     if (ST.searchQ) {
-      const q = ST.searchQ.toLowerCase();
-      if (![(p.nazev||''),(p.adresa||''),(p.typ||'')].some(s => s.toLowerCase().includes(q))) return false;
+      const q = _norm(ST.searchQ);
+      const _catLbl2 = _poiKats(p).map(k => CAT_CFG[k]?.label||'').join(' ');
+      const _scLbl2 = _poiSubs(p).map(s => {
+        for (const [,c] of Object.entries(CAT_CFG)) if (c.subs?.[s]) return c.subs[s].label; return s;
+      });
+      if (![p.nazev,p.adresa,p.typ,p.popis,_catLbl2,..._scLbl2]
+          .some(s => _norm(s).includes(q))) return false;
     }
     return true;
   });
