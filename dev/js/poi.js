@@ -98,11 +98,13 @@ async function loadPOI() {
 
   // Inicializuj subActive pro VŠECHNY podkategorie na true
   // (bez tohoto by první klik na toggle nastavil z undefined na true místo false)
-  ST.features.forEach(f => {
-    _poiSubs(f.properties).forEach(k => {
-      if (ST.subActive[k] === undefined) ST.subActive[k] = true;
-    });
+  // subActive: inicializuj ze VŠECH features (vč. multi-sub) + ze všech CAT_CFG
+  const _allSubKeys = new Set();
+  ST.features.forEach(f => _poiSubs(f.properties).forEach(k => k && _allSubKeys.add(k)));
+  Object.values(CAT_CFG).forEach(cat => {
+    if (cat.subs) Object.keys(cat.subs).forEach(k => _allSubKeys.add(k));
   });
+  _allSubKeys.forEach(k => { if (ST.subActive[k] === undefined) ST.subActive[k] = true; });
   Object.entries(CAT_CFG).forEach(([, cat]) => {
     if (cat.subs) Object.keys(cat.subs).forEach(k => { if (ST.subActive[k] === undefined) ST.subActive[k] = true; });
   });
@@ -124,30 +126,41 @@ async function loadPOI() {
 
 // ── SUBKATEGORIE SLUŽBY ──────────────────────────────────────────
 function buildSubUI() {
-  for (const [catKey, cat] of Object.entries(CAT_CFG)) {
-    if (!cat.subs || Object.keys(cat.subs).length === 0) continue;
-    const el = document.getElementById('sub-' + catKey);
-    if (!el) continue;
-    el.innerHTML = '';
-    // Spočítej POI pro každou subkat
-    const subCounts = {};
-    ST.features.filter(f => f.properties.kategorie === catKey)
-               .forEach(f => { const s = f.properties.podkategorie; if (s) subCounts[s] = (subCounts[s]||0)+1; });
+  // Zobrazit chip pro každou podkategorii z CAT_CFG.sluzby.subs
+  // PLUS pro každou podkategorii naleznutou ve features (multi-sub)
+  const el = document.getElementById('sub-sluzby');
+  if (!el) return;
 
-    for (const [k, sub] of Object.entries(cat.subs)) {
-      if (!subCounts[k]) continue;  // skryj prázdné subkategorie
-      if (ST.subActive[k] === undefined) ST.subActive[k] = true;
-      const d = document.createElement('div');
-      d.className   = 'sub-chip' + (ST.subActive[k] ? ' active' : '');
-      d.id          = 'subchip-' + k;
-      d.style.color = sub.color;
-      d.innerHTML   = `<div class="sub-dot"></div><span>${sub.icon} ${sub.label}</span>`;
-      d.onclick     = () => toggleSub(k);
-      el.appendChild(d);
+  // Sbírej VŠECHNY podkategorie ze sluzby (config) + z features (multi-sub)
+  const subsToShow = new Set(Object.keys(CAT_CFG.sluzby.subs));
+  ST.features.forEach(f => {
+    const kats = _poiKats(f.properties);
+    if (kats.includes('sluzby')) {
+      _poiSubs(f.properties).forEach(s => {
+        // Přidej jen pokud sub patří do sluzby (nebo je v features jako multi-sub)
+        if (CAT_CFG.sluzby.subs[s] || kats.includes('sluzby')) subsToShow.add(s);
+      });
     }
-    // Skryj šipku pokud žádné subkategorie nemají POI
-    const arr = document.getElementById('cat-arr-' + catKey);
-    if (arr) arr.style.display = el.children.length ? '' : 'none';
+  });
+
+  el.innerHTML = '';
+  for (const k of subsToShow) {
+    // Najdi definici sub — buď v sluzby, nebo v jiné kategorii
+    let sub = CAT_CFG.sluzby.subs[k];
+    if (!sub) {
+      for (const cat of Object.values(CAT_CFG)) {
+        if (cat.subs?.[k]) { sub = cat.subs[k]; break; }
+      }
+    }
+    if (!sub) continue;
+    if (ST.subActive[k] === undefined) ST.subActive[k] = true;
+    const d = document.createElement('span');
+    d.className   = 'sub-chip' + (ST.subActive[k] ? ' active' : '');
+    d.id          = 'subchip-' + k;
+    d.style.color = sub.color;
+    d.innerHTML   = `<div class="sub-dot"></div><span>${sub.icon} ${sub.label}</span>`;
+    d.onclick     = () => toggleSub(k);
+    el.appendChild(d);
   }
 }
 
@@ -247,38 +260,72 @@ const _DMAP = {
 function _parseSchedule(text) {
   if (!text || text.length < 4) return null;
   const days = {};
-  // Split by semicolons or newlines = separate days
-  const chunks = text.split(/[;;\n]+/).map(s => s.trim()).filter(Boolean);
+  // Tokenizuj česká jména dní pro matching
+  const _DAY_KEYS = Object.keys(_DMAP); // ['po','pó','pondělí',...]
+
+  // Najdi jméno dne na začátku chunky — vrátí délku matchnuté části
+  function _matchDayToken(s) {
+    // Seřad od nejdelšího
+    const sorted = _DAY_KEYS.slice().sort((a,b) => b.length - a.length);
+    const sl = s.toLowerCase();
+    for (const k of sorted) {
+      if (sl.startsWith(k)) return k.length;
+    }
+    return 0;
+  }
+
+  // Parsuj seznam/rozsah dní ze stringu, vrátí Set čísel
+  function _parseDayStr(dayStr) {
+    const result = new Set();
+    let s = dayStr.trim();
+    while (s.length) {
+      const len = _matchDayToken(s);
+      if (!len) { s = s.slice(1); continue; }
+      const tok = s.slice(0, len).toLowerCase();
+      const num = _DMAP[tok];
+      s = s.slice(len);
+      // Zjisti zda následuje rozsah (– nebo -)
+      const rangeM = s.match(/^\s*[–\-]\s*/);
+      if (rangeM) {
+        s = s.slice(rangeM[0].length);
+        const len2 = _matchDayToken(s);
+        if (len2) {
+          const tok2 = s.slice(0, len2).toLowerCase();
+          const num2 = _DMAP[tok2];
+          s = s.slice(len2);
+          if (num !== undefined && num2 !== undefined) {
+            for (let d = num; d <= num2; d++) result.add(d);
+          }
+        }
+      } else {
+        if (num !== undefined) result.add(num);
+        // skip separators
+        const sepM = s.match(/^[\s,，]+/);
+        if (sepM) s = s.slice(sepM[0].length);
+      }
+    }
+    return result;
+  }
+
+  // Split input na segmenty (;, |, nový řádek)
+  const chunks = text.split(/[;|\n]+/).map(s => s.trim()).filter(Boolean);
   let parsed = 0;
   for (const chunk of chunks) {
-    // Find day names at the start: "Po, Út" or "Po–Čt" or "St"
-    const dayMatch = chunk.match(/^([A-ZÁČĎÉÍŇÓŘŠŤÚŮÝŽa-záčďéíňóřšťúůýž, –-]+?)(?:\s+)(\d)/i);
-    if (!dayMatch) continue;
-    const dayStr = dayMatch[1].trim();
-    const rest   = chunk.slice(dayMatch.index + dayMatch[0].length - 1).trim();
-    // Parse day names/ranges
-    const dayNums = new Set();
-    // Handle ranges like Po–Čt or Po-St
-    const rangeMatch = dayStr.match(/(\w+)\s*[–-]\s*(\w+)/);
-    if (rangeMatch) {
-      const from = _DMAP[rangeMatch[1].toLowerCase()];
-      const to   = _DMAP[rangeMatch[2].toLowerCase()];
-      if (from !== undefined && to !== undefined) {
-        for (let d = from; d <= to; d++) dayNums.add(d);
-      }
-    } else {
-      // Comma-separated
-      dayStr.split(/[,，]/).forEach(d => {
-        const n = _DMAP[d.trim().toLowerCase()];
-        if (n !== undefined) dayNums.add(n);
-      });
-    }
+    // Najdi dny na začátku chunky (až po číslici začátku času)
+    const timeStart = chunk.search(/\d{1,2}:\d{2}/);
+    if (timeStart < 0) continue;
+    const dayPart = chunk.slice(0, timeStart).trim();
+    const restPart = chunk.slice(timeStart).trim();
+    if (!dayPart) continue;
+
+    const dayNums = _parseDayStr(dayPart);
     if (dayNums.size === 0) continue;
-    // Parse time slots in rest: "8:00–17:00 popis, 17:00–18:00 popis2"
+
+    // Parse časy
     const slots = [];
-    const timeRx = /(\d{1,2}:\d{2})\s*[–-]\s*(\d{1,2}:\d{2})(?:\s+([^,;0-9][^,;]*))?/g;
+    const timeRx = /(\d{1,2}:\d{2})\s*[–\-]\s*(\d{1,2}:\d{2})(?:\s+([^,;0-9][^,;]*))?/g;
     let m;
-    while ((m = timeRx.exec(rest)) !== null) {
+    while ((m = timeRx.exec(restPart)) !== null) {
       slots.push({ from: m[1], to: m[2], label: (m[3]||'').trim() || null });
     }
     if (slots.length === 0) continue;
@@ -358,15 +405,28 @@ function buildPOIPopup(p, color, icon, lat, lng) {
   // Název přes data-atribut — bezpečné pro libovolné znaky
   const safeNameAttr = (p.nazev||'Cíl').replace(/&/g,'&amp;').replace(/"/g,'&quot;');
 
+  const _status = _sched ? _getOpenStatus(_sched) : null;
+  const _statusCfg = {
+    open:    { label: 'Otevřeno',       cls: 'ppop-status-open',    dot: '#22c55e' },
+    closing: { label: 'Brzy zavírá',    cls: 'ppop-status-closing', dot: '#f59e0b' },
+    closed:  { label: 'Zavřeno',        cls: 'ppop-status-closed',  dot: '#ef4444' },
+  };
+  const _sc = _status ? _statusCfg[_status] : null;
+
   return `
     ${foto}
     <div class="ppop-head" style="background:linear-gradient(160deg,${color}22 0%,${color}06 50%,transparent 100%)">
       <div class="ppop-badge" style="background:${color}22;color:${color}">${icon} ${typ}</div>
       <div class="ppop-name">${p.nazev || 'Bez názvu'}</div>
+      ${_sc ? `<div class="ppop-status ${_sc.cls}">
+        <span class="ppop-status-dot" style="background:${_sc.dot}"></span>
+        <span class="ppop-status-lbl">${_sc.label}</span>
+        <button class="ppop-status-toggle" onclick="_ppopToggleSchedFromStatus(this)">🕐 Rozvrh ›</button>
+      </div>` : ''}
     </div>
     ${rows ? `<div class="ppop-div"></div><div style="padding-bottom:6px">${rows}</div>` : ''}
     ${_sched ? `
-    <button class="ppop-provoz-btn" onclick="_ppopToggleSched(this)">🕐 Otevírací doba <span class="ppop-provoz-arr">›</span></button>
+    <button class="ppop-provoz-btn" onclick="_ppopToggleSched(this)" style="display:none">hidden-toggle</button>
     <div class="ppop-schedule" id="ppsc-${fotoIdx}">
       ${_renderScheduleHtml(_sched)}
     </div>` : ''}
@@ -412,6 +472,18 @@ function _renderScheduleHtml(sched) {
 }
 
 // Toggle schedule panel inside popup
+
+function _ppopToggleSchedFromStatus(btn) {
+  const popup = btn.closest('.leaflet-popup-content');
+  if (!popup) return;
+  const panel = popup.querySelector('.ppop-schedule');
+  if (!panel) return;
+  const isOpen = panel.classList.contains('open');
+  panel.classList.toggle('open', !isOpen);
+  btn.classList.toggle('open', !isOpen);
+  btn.textContent = isOpen ? '🕐 Rozvrh ›' : '🕐 Rozvrh ✕';
+}
+
 function _ppopToggleSched(btn) {
   const popup = btn.closest('.leaflet-popup-content');
   if (!popup) return;
@@ -419,6 +491,9 @@ function _ppopToggleSched(btn) {
   if (!panel) return;
   const isOpen = panel.classList.contains('open');
   panel.classList.toggle('open', !isOpen);
+  // Rotate arrow on status toggle button
+  const statusToggle = popup.querySelector('.ppop-status-toggle');
+  if (statusToggle) statusToggle.classList.toggle('open', !isOpen);
   btn.classList.toggle('open', !isOpen);
   // Resize Leaflet popup to fit new content
   setTimeout(() => {
@@ -427,6 +502,25 @@ function _ppopToggleSched(btn) {
       if (lmap) lmap.eachLayer(l => l.getPopup?.()?.update?.());
     } catch(e) {}
   }, 300);
+}
+
+
+// ── Otevírací indikátor ─────────────────────────────────────────
+function _getOpenStatus(sched) {
+  if (!sched) return null;
+  const now = new Date();
+  const day = now.getDay();
+  const dayIdx = day === 0 ? 6 : day - 1;
+  const slots = sched[dayIdx];
+  if (!slots || slots.length === 0) return 'closed';
+  const hm = now.getHours() * 60 + now.getMinutes();
+  for (const sl of slots) {
+    const [fh, fm] = sl.from.split(':').map(Number);
+    const [th, tm] = sl.to.split(':').map(Number);
+    const from = fh * 60 + fm, to = th * 60 + tm;
+    if (hm >= from && hm < to) return (to - hm) <= 30 ? 'closing' : 'open';
+  }
+  return 'closed';
 }
 
 // ── LIGHTBOX ─────────────────────────────────────────────────────

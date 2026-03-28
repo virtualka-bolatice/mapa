@@ -151,6 +151,9 @@ const CAT_CFG = {
   obchod: { label:'Obchody',           color:'#f59e0b', icon:'🛒', subs:{
     potraviny: { label:'Potraviny', icon:'🛒', color:'#f59e0b' },
     smisene:   { label:'Smíšené',  icon:'🏪', color:'#fbbf24' },
+    elektro: { label:'Elektro', icon:'💻', color:'#d946ef' },
+    zahradnictvi: { label:'Zahradnictví', icon:'🌱', color:'#16a34a' },
+    stavebniny: { label:'Stavebniny', icon:'🏗️', color:'#f59e0b' },
   }},
   sluzby: { label:'Služby',            color:'#8b5cf6', icon:'🔧', subs:{
     kadernictvi: { label:'Kadeřnictví', icon:'✂️', color:'#a78bfa' },
@@ -159,7 +162,9 @@ const CAT_CFG = {
     finance:     { label:'Banka',       icon:'🏦', color:'#60a5fa' },
     ubytovani:   { label:'Ubytování',   icon:'🏨', color:'#34d399' },
     socialni: { label:'Sociální služby', icon:'🤝', color:'#a78bfa' },
+    zlatnictvi: { label:'Zlatnictví', icon:'💍', color:'#fbbf24' },
     doprava: { label:'Doprava', icon:'🚉', color:'#0ea5e9' },
+    sklad: { label:'Sklad', icon:'📦', color:'#64748b' },
     ostatni:     { label:'Ostatní',     icon:'⚙️', color:'#94a3b8' },
   }},
 };

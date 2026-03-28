@@ -138,7 +138,8 @@ function _render(data) {
   const daysHtml = days.map(x => {
     const w = _wmo(x.code);
     const s = _isStorm(x.code);
-    return `<div class="wx-day ${s ? 'wx-day-storm' : ''}">
+    const tip = `${w.t} · max ${Math.round(x.max)}° / min ${Math.round(x.min)}° · ${x.rain > 0 ? x.rain.toFixed(1)+'mm srážek · ' : ''}vítr ${Math.round(x.wind)} km/h`;
+    return `<div class="wx-day ${s ? 'wx-day-storm' : ''}" data-wx-tip="${tip}">
       <span class="wx-day-name">${_fmtDay(x.date)}</span>
       <span class="wx-day-ico">${w.i}</span>
       <span class="wx-day-temps">
@@ -200,6 +201,7 @@ function wxClose() {
 async function initAladinWeather() {
   _wxInitMapClose();
   _wxInitTooltips();
+  _wxFixScroll();
   // Fetch + render
   async function refresh() {
     try {
@@ -231,6 +233,24 @@ async function initAladinWeather() {
 function _wxInitMapClose() {
   if (typeof map === 'undefined') return;
   map.on('click', () => { if (WX._open) wxClose(); });
+}
+
+// Oprav scroll kolečkem — wx-panel (vertikální) + wx-hours (horizontální)
+function _wxFixScroll() {
+  const panel = document.getElementById('wx-panel');
+  if (!panel) return;
+  // Panel: zabrání Leafletu, povolí vertikální scroll
+  panel.addEventListener('wheel', e => {
+    e.stopPropagation();
+    e.preventDefault();
+    // Detekuj zda je kurzor nad wx-hours → horizontální scroll
+    const hoursEl = e.target.closest('.wx-hours');
+    if (hoursEl) {
+      hoursEl.scrollLeft += e.deltaY !== 0 ? e.deltaY : e.deltaX;
+    } else {
+      panel.scrollTop += e.deltaY;
+    }
+  }, { passive: false });
 }
 
 // ── JS Tooltip for wx elements (overflow-safe) ──────────────────
