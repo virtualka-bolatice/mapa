@@ -219,6 +219,7 @@
       <input type="text" id="search-inp"
              placeholder="Název, adresa, typ…"
              oninput="doSearch(this.value)">
+      <button class="sb-clear" onclick="this.previousElementSibling.value='';doSearch('')" title="Smazat">✕</button>
     </div>
   </div>
 

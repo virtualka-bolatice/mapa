@@ -17,16 +17,11 @@ const ST = {
   subFilterMode: false,
   subFilterKey:  null,
 };
-Object.keys(CAT_CFG).forEach(k => ST.catActive[k] = false);
+Object.keys(CAT_CFG).forEach(k => ST.catActive[k] = true);
 
 // ── Multi-kategorie helper ────────────────────────────────────────
 // Pole 'kategorie' i 'podkategorie' mohou mít více hodnot oddělených čárkou.
 // Příklad: "kadernictvi,kosmetika" nebo "sluzby,zdravi"
-// Normalizace pro vyhledávání bez diakritiky
-function _norm(s) {
-  return (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9 ]/g,' ');
-}
-
 function _splitField(val) {
   if (!val) return [];
   return String(val).split(',').map(s => s.trim()).filter(Boolean);
@@ -131,36 +126,41 @@ async function loadPOI() {
 
 // ── SUBKATEGORIE SLUŽBY ──────────────────────────────────────────
 function buildSubUI() {
-  // Spočítej které podkategorie mají aspoň 1 POI objekt
-  // Zdroj: atribut "podkategorie" (může být comma-separated)
-  const subHasPOI = {};  // subKey → true
+  // Zobrazit chip pro každou podkategorii z CAT_CFG.sluzby.subs
+  // PLUS pro každou podkategorii naleznutou ve features (multi-sub)
+  const el = document.getElementById('sub-sluzby');
+  if (!el) return;
+
+  // Sbírej VŠECHNY podkategorie ze sluzby (config) + z features (multi-sub)
+  const subsToShow = new Set(Object.keys(CAT_CFG.sluzby.subs));
   ST.features.forEach(f => {
-    _poiSubs(f.properties).forEach(s => { subHasPOI[s] = true; });
+    const kats = _poiKats(f.properties);
+    if (kats.includes('sluzby')) {
+      _poiSubs(f.properties).forEach(s => {
+        // Přidej jen pokud sub patří do sluzby (nebo je v features jako multi-sub)
+        if (CAT_CFG.sluzby.subs[s] || kats.includes('sluzby')) subsToShow.add(s);
+      });
+    }
   });
 
-  // Pro každou kategorii v CAT_CFG vykresli sub-wrap
-  for (const [catKey, cat] of Object.entries(CAT_CFG)) {
-    if (!cat.subs) continue;
-    const el = document.getElementById('sub-' + catKey);
-    if (!el) continue;
-    el.innerHTML = '';
-
-    for (const [k, sub] of Object.entries(cat.subs)) {
-      // Zobraz sub-chip POUZE pokud existuje alespoň 1 POI s touto podkategorií
-      if (!subHasPOI[k]) continue;
-      if (ST.subActive[k] === undefined) ST.subActive[k] = true;
-      const d = document.createElement('div');
-      d.className   = 'sub-chip' + (ST.subActive[k] ? ' active' : '');
-      d.id          = 'subchip-' + k;
-      d.style.color = sub.color;
-      d.innerHTML   = `<div class="sub-dot"></div><span>${sub.icon} ${sub.label}</span>`;
-      d.onclick     = () => toggleSub(k);
-      el.appendChild(d);
+  el.innerHTML = '';
+  for (const k of subsToShow) {
+    // Najdi definici sub — buď v sluzby, nebo v jiné kategorii
+    let sub = CAT_CFG.sluzby.subs[k];
+    if (!sub) {
+      for (const cat of Object.values(CAT_CFG)) {
+        if (cat.subs?.[k]) { sub = cat.subs[k]; break; }
+      }
     }
-
-    // Skryj šipku pokud tato kategorie nemá žádné obsazené podkategorie
-    const arr = document.getElementById('cat-arr-' + catKey);
-    if (arr) arr.style.display = el.children.length ? '' : 'none';
+    if (!sub) continue;
+    if (ST.subActive[k] === undefined) ST.subActive[k] = true;
+    const d = document.createElement('span');
+    d.className   = 'sub-chip' + (ST.subActive[k] ? ' active' : '');
+    d.id          = 'subchip-' + k;
+    d.style.color = sub.color;
+    d.innerHTML   = `<div class="sub-dot"></div><span>${sub.icon} ${sub.label}</span>`;
+    d.onclick     = () => toggleSub(k);
+    el.appendChild(d);
   }
 }
 
@@ -205,13 +205,8 @@ function renderPOI() {
     const primaryKat = kats[0] || null;
     const cat = primaryKat ? CAT_CFG[primaryKat] : null;
     if (ST.searchQ) {
-      const q = _norm(ST.searchQ);
-      const _c1 = CAT_CFG[p.kategorie], _sc1 = _poiSubs(p).map(s => {
-        for (const [,c] of Object.entries(CAT_CFG)) if (c.subs?.[s]) return c.subs[s].label; return s;
-      });
-      const _catLbl = _poiKats(p).map(k => CAT_CFG[k]?.label||'').join(' ');
-      if (![p.nazev,p.adresa,p.typ,p.popis,_catLbl,..._sc1]
-          .some(s => _norm(s).includes(q))) return;
+      const q = ST.searchQ.toLowerCase();
+      if (![(p.nazev||''),(p.adresa||''),(p.typ||'')].some(s => s.toLowerCase().includes(q))) return;
     }
 
     let color = cat?.color || '#888', icon = cat?.icon || '📍';
@@ -645,17 +640,12 @@ function renderMobSubcats() {
   if (!cat?.subs || Object.keys(cat.subs).length === 0) return;
 
   // Spočítej POI v každé subkategorii aktivní kategorie
-  // Používá _poiSubs pro správné rozčlenění multi-podkategorií (kadernictvi,kosmetika → dvě)
   const subCounts = {};
   ST.features
-    .filter(f => _poiKats(f.properties).includes(ST.filterKey))
+    .filter(f => f.properties.kategorie === ST.filterKey)
     .forEach(f => {
-      _poiSubs(f.properties).forEach(s => {
-        // Zahrň jen subcategorie, které patří do aktivní kategorie
-        if (CAT_CFG[ST.filterKey]?.subs?.[s]) {
-          subCounts[s] = (subCounts[s] || 0) + 1;
-        }
-      });
+      const s = f.properties.podkategorie;
+      if (s) subCounts[s] = (subCounts[s] || 0) + 1;
     });
 
   for (const [k, sub] of Object.entries(cat.subs)) {
@@ -692,20 +682,15 @@ function _renderResultsInto(listId, cntId) {
   const visible = ST.features.filter(f => {
     const p = f.properties;
     const _kats = _poiKats(p), _subs = _poiSubs(p);
-    if (!ST.searchQ && _kats.length && !_kats.some(k => ST.catActive[k])) return false;
+    if (_kats.length && !_kats.some(k => ST.catActive[k])) return false;
     if (ST.subFilterMode && ST.subFilterKey) {
       if (_subs.length > 0 && !_subs.includes(ST.subFilterKey)) return false;
     } else {
       if (_subs.length && _subs.every(s => ST.subActive[s] === false)) return false;
     }
     if (ST.searchQ) {
-      const q = _norm(ST.searchQ);
-      const _catLbl2 = _poiKats(p).map(k => CAT_CFG[k]?.label||'').join(' ');
-      const _scLbl2 = _poiSubs(p).map(s => {
-        for (const [,c] of Object.entries(CAT_CFG)) if (c.subs?.[s]) return c.subs[s].label; return s;
-      });
-      if (![p.nazev,p.adresa,p.typ,p.popis,_catLbl2,..._scLbl2]
-          .some(s => _norm(s).includes(q))) return false;
+      const q = ST.searchQ.toLowerCase();
+      if (![(p.nazev||''),(p.adresa||''),(p.typ||'')].some(s => s.toLowerCase().includes(q))) return false;
     }
     return true;
   });
@@ -732,10 +717,13 @@ function _renderResultsInto(listId, cntId) {
         <div class="res-sub">${p.typ || sc?.label || cat?.label || ''}${p.adresa ? ' · ' + p.adresa : ''}</div>
       </div>`;
     d.onclick = () => {
+      // Zapamatuj si vybraný prvek — markery zůstanou viditelné
+      const selectedNazev = p.nazev;
+
       map.setView([lat, lng], 17);
       setTimeout(() => {
         poiGroup.eachLayer(m => {
-          if (m.feature?.properties?.nazev === p.nazev) {
+          if (m.feature?.properties?.nazev === selectedNazev) {
             m.openPopup();
             const pin = m.getElement()?.querySelector('.poi-pin') || m.getElement();
             if (pin) {
@@ -747,8 +735,13 @@ function _renderResultsInto(listId, cntId) {
           }
         });
       }, 320);
-      if (typeof closeMobSearchKeepQuery === 'function') closeMobSearchKeepQuery();
-      else closeMobSearch();
+
+      // Zavři UI vyhledávání ale NEmazej searchQ ani markery
+      document.getElementById('mob-search')?.classList.remove('open');
+      const sbSearch = document.querySelector('.sb-search input');
+      // Desktop: ponech text ve vyhledávači, markery zůstanou na mapě
+      // Mobil: skryj panel, markery zůstanou
+      if (typeof isMobile === 'function' && isMobile()) collapseBS?.();
     };
     frag.appendChild(d);
   });
