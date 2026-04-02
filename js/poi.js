@@ -126,41 +126,38 @@ async function loadPOI() {
 
 // ── SUBKATEGORIE SLUŽBY ──────────────────────────────────────────
 function buildSubUI() {
-  // Zobrazit chip pro každou podkategorii z CAT_CFG.sluzby.subs
-  // PLUS pro každou podkategorii naleznutou ve features (multi-sub)
-  const el = document.getElementById('sub-sluzby');
-  if (!el) return;
+  // Postav sub-chipy pro KAŽDOU kategorii s podkategoriemi
+  for (const [catKey, cat] of Object.entries(CAT_CFG)) {
+    const el = document.getElementById('sub-' + catKey);
+    if (!el || !cat.subs) continue;
 
-  // Sbírej VŠECHNY podkategorie ze sluzby (config) + z features (multi-sub)
-  const subsToShow = new Set(Object.keys(CAT_CFG.sluzby.subs));
-  ST.features.forEach(f => {
-    const kats = _poiKats(f.properties);
-    if (kats.includes('sluzby')) {
-      _poiSubs(f.properties).forEach(s => {
-        // Přidej jen pokud sub patří do sluzby (nebo je v features jako multi-sub)
-        if (CAT_CFG.sluzby.subs[s] || kats.includes('sluzby')) subsToShow.add(s);
-      });
-    }
-  });
-
-  el.innerHTML = '';
-  for (const k of subsToShow) {
-    // Najdi definici sub — buď v sluzby, nebo v jiné kategorii
-    let sub = CAT_CFG.sluzby.subs[k];
-    if (!sub) {
-      for (const cat of Object.values(CAT_CFG)) {
-        if (cat.subs?.[k]) { sub = cat.subs[k]; break; }
+    // Sbírej subs z configu + z features (multi-sub)
+    const subsToShow = new Set(Object.keys(cat.subs));
+    ST.features.forEach(f => {
+      const kats = _poiKats(f.properties);
+      if (kats.includes(catKey)) {
+        _poiSubs(f.properties).forEach(s => { if (s) subsToShow.add(s); });
       }
+    });
+
+    el.innerHTML = '';
+    for (const k of subsToShow) {
+      let sub = cat.subs[k];
+      if (!sub) {
+        for (const c of Object.values(CAT_CFG)) {
+          if (c.subs?.[k]) { sub = c.subs[k]; break; }
+        }
+      }
+      if (!sub) continue;
+      if (ST.subActive[k] === undefined) ST.subActive[k] = true;
+      const d = document.createElement('span');
+      d.className   = 'sub-chip' + (ST.subActive[k] ? ' active' : '');
+      d.id          = 'subchip-' + k;
+      d.style.color = sub.color;
+      d.innerHTML   = `<div class="sub-dot"></div><span>${sub.icon} ${sub.label}</span>`;
+      d.onclick     = () => toggleSub(k);
+      el.appendChild(d);
     }
-    if (!sub) continue;
-    if (ST.subActive[k] === undefined) ST.subActive[k] = true;
-    const d = document.createElement('span');
-    d.className   = 'sub-chip' + (ST.subActive[k] ? ' active' : '');
-    d.id          = 'subchip-' + k;
-    d.style.color = sub.color;
-    d.innerHTML   = `<div class="sub-dot"></div><span>${sub.icon} ${sub.label}</span>`;
-    d.onclick     = () => toggleSub(k);
-    el.appendChild(d);
   }
 }
 
