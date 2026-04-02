@@ -17,7 +17,7 @@ const ST = {
   subFilterMode: false,
   subFilterKey:  null,
 };
-Object.keys(CAT_CFG).forEach(k => ST.catActive[k] = true);
+Object.keys(CAT_CFG).forEach(k => ST.catActive[k] = false);
 
 // ── Multi-kategorie helper ────────────────────────────────────────
 // Pole 'kategorie' i 'podkategorie' mohou mít více hodnot oddělených čárkou.
