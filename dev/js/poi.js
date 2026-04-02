@@ -17,7 +17,7 @@ const ST = {
   subFilterMode: false,
   subFilterKey:  null,
 };
-Object.keys(CAT_CFG).forEach(k => ST.catActive[k] = true);
+Object.keys(CAT_CFG).forEach(k => ST.catActive[k] = false);
 
 // ── Multi-kategorie helper ────────────────────────────────────────
 // Pole 'kategorie' i 'podkategorie' mohou mít více hodnot oddělených čárkou.
@@ -193,7 +193,7 @@ function renderPOI() {
     const subs = _poiSubs(p);
     // Zobraz pokud ALESPOŇ JEDNA kategorie aktivní
     const katOk = kats.length === 0 || kats.some(k => ST.catActive[k]);
-    if (!katOk) return;
+    if (!katOk && !ST.searchQ) return;
     // Filtr subkategorií
     if (ST.subFilterMode && ST.subFilterKey) {
       // Exclusive mode: zobraz pouze objekty kde ASPOŇ JEDNA sub odpovídá aktivnímu filtru
@@ -682,7 +682,7 @@ function _renderResultsInto(listId, cntId) {
   const visible = ST.features.filter(f => {
     const p = f.properties;
     const _kats = _poiKats(p), _subs = _poiSubs(p);
-    if (_kats.length && !_kats.some(k => ST.catActive[k])) return false;
+    if (!ST.searchQ && _kats.length && !_kats.some(k => ST.catActive[k])) return false;
     if (ST.subFilterMode && ST.subFilterKey) {
       if (_subs.length > 0 && !_subs.includes(ST.subFilterKey)) return false;
     } else {
