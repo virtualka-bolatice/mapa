@@ -692,7 +692,7 @@ function _renderResultsInto(listId, cntId) {
   const visible = ST.features.filter(f => {
     const p = f.properties;
     const _kats = _poiKats(p), _subs = _poiSubs(p);
-    if (_kats.length && !_kats.some(k => ST.catActive[k])) return false;
+    if (!ST.searchQ && _kats.length && !_kats.some(k => ST.catActive[k])) return false;
     if (ST.subFilterMode && ST.subFilterKey) {
       if (_subs.length > 0 && !_subs.includes(ST.subFilterKey)) return false;
     } else {
