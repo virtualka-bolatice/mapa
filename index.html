@@ -81,6 +81,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/app.css">
+  <link rel="stylesheet" href="events/events.css">
 </head>
 <body>
 
@@ -435,6 +436,10 @@
 <script src="js/poi.js"></script>
 <script src="js/measure.js"></script>
 <script src="js/nav.js"></script>
+
+<!-- výstrahy a události (např. uzavírky) — načítají se z events/events-config.js -->
+<script src="events/events-config.js"></script>
+<script src="events/events.js"></script>
 
 <!-- ══ POI DATA — staticky před ui.js → window.json_POI dostupné při loadPOI() ══
      Zkouší oba umístění. Chyba při nenalezení je potlačena (onerror=void 0). ══════ -->
