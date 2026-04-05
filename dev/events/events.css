@@ -1,0 +1,287 @@
+/* ════════════════════════════════════════════════════════════════
+   events.css — Styly pro správu událostí na mapě
+   ════════════════════════════════════════════════════════════════ */
+
+/* ── FAB tlačítko události ──────────────────────────────────────── */
+#ev-fab {
+  font-size: 1rem;
+}
+
+/* ── Ovládací panel ─────────────────────────────────────────────── */
+#ev-draw-panel {
+  position: fixed;
+  top: calc(var(--hdr, 48px) + 8px);
+  right: 54px;
+  z-index: 1060;
+  width: 260px;
+  background: var(--surface, #161b27);
+  border: 1px solid var(--border, #2a3352);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0,0,0,.45);
+  overflow: hidden;
+  font-family: 'DM Sans', sans-serif;
+}
+
+.ev-panel-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 12px 8px;
+  border-bottom: 1px solid var(--border, #2a3352);
+  background: rgba(124,58,237,.08);
+}
+.ev-panel-title {
+  font-size: .82rem; font-weight: 700; color: #a78bfa;
+  letter-spacing: -.2px;
+}
+.ev-panel-close {
+  width: 22px; height: 22px; border-radius: 50%;
+  background: rgba(255,255,255,.06); border: none;
+  color: var(--muted, #7c8aaa); font-size: .7rem; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .15s;
+}
+.ev-panel-close:hover { background: rgba(239,68,68,.2); color: #f87171; }
+
+/* ── Auth bar ───────────────────────────────────────────────────── */
+.ev-auth-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border, #2a3352);
+  font-size: .75rem;
+}
+.ev-auth-badge {
+  color: #4ade80; font-weight: 600; font-size: .72rem;
+}
+
+/* ── Kreslicí tlačítka ──────────────────────────────────────────── */
+.ev-draw-btns {
+  padding: 8px 10px 10px;
+}
+.ev-draw-hint {
+  font-size: .67rem; color: var(--muted, #7c8aaa);
+  padding: 4px 2px 6px; min-height: 20px;
+  font-style: italic;
+}
+.ev-type-btns {
+  display: flex; flex-direction: column; gap: 5px;
+}
+.ev-type-btn {
+  display: flex; align-items: center; gap: 7px;
+  padding: 7px 10px; border-radius: 7px;
+  border: 1px solid color-mix(in srgb, var(--ev-c) 40%, transparent);
+  background: color-mix(in srgb, var(--ev-c) 10%, transparent);
+  color: var(--ev-c); font-size: .75rem; font-weight: 600;
+  cursor: pointer; font-family: inherit;
+  transition: background .15s, transform .1s;
+}
+.ev-type-btn:hover {
+  background: color-mix(in srgb, var(--ev-c) 20%, transparent);
+  transform: translateX(2px);
+}
+
+/* ── Sdílené tlačítka ───────────────────────────────────────────── */
+.ev-btn {
+  padding: 6px 14px; border-radius: 7px; font-family: inherit;
+  font-size: .73rem; font-weight: 600; cursor: pointer;
+  border: 1px solid var(--border, #2a3352);
+  background: var(--surf2, #1e2436); color: var(--text, #e2e8f0);
+  transition: all .14s;
+}
+.ev-btn:hover { background: var(--surf3, #252c42); }
+.ev-btn-sm { padding: 4px 10px; font-size: .67rem; }
+.ev-btn-primary {
+  background: #7c3aed; border-color: #7c3aed; color: #fff;
+}
+.ev-btn-primary:hover { background: #6d28d9; border-color: #6d28d9; }
+.ev-btn-danger {
+  background: #dc2626; border-color: #dc2626; color: #fff;
+}
+.ev-btn-danger:hover { background: #b91c1c; border-color: #b91c1c; }
+
+/* ── Formulář ───────────────────────────────────────────────────── */
+.ev-form-lbl {
+  display: block; font-size: .68rem; color: var(--muted, #7c8aaa);
+  margin: 8px 0 3px; text-transform: uppercase; letter-spacing: .5px;
+}
+.ev-form-input {
+  width: 100%; padding: 7px 9px;
+  background: var(--surf2, #1e2436);
+  border: 1px solid var(--border, #2a3352);
+  border-radius: 6px; color: var(--text, #e2e8f0);
+  font-family: inherit; font-size: .78rem; outline: none;
+  transition: border-color .15s; box-sizing: border-box;
+}
+.ev-form-input:focus { border-color: #7c3aed; }
+.ev-form-ta { resize: vertical; min-height: 60px; }
+.ev-setup-info {
+  font-size: .73rem; color: var(--muted, #7c8aaa);
+  line-height: 1.5; margin-bottom: 4px;
+}
+
+/* ── Dialog overlay ─────────────────────────────────────────────── */
+#ev-dialog-overlay {
+  display: none;
+  position: fixed; inset: 0; z-index: 9000;
+  background: rgba(0,0,0,.6);
+  backdrop-filter: blur(4px);
+  align-items: center; justify-content: center;
+  padding: 16px;
+}
+.ev-dialog {
+  background: var(--surface, #161b27);
+  border: 1px solid var(--border, #2a3352);
+  border-radius: 14px;
+  box-shadow: 0 20px 60px rgba(0,0,0,.6);
+  width: 100%; max-width: 340px;
+  padding: 20px;
+  animation: evDialogIn .18s cubic-bezier(.4,0,.2,1);
+}
+@keyframes evDialogIn {
+  from { opacity: 0; transform: scale(.95) translateY(-8px); }
+  to   { opacity: 1; transform: none; }
+}
+.ev-dialog-title {
+  font-size: .9rem; font-weight: 700; color: var(--text, #e2e8f0);
+  margin-bottom: 12px; font-family: 'Syne', sans-serif;
+}
+.ev-dialog-body { margin-bottom: 16px; }
+.ev-dialog-foot {
+  display: flex; gap: 8px; justify-content: flex-end;
+}
+
+/* ── Popup okno události ────────────────────────────────────────── */
+.ev-popup-wrap .leaflet-popup-content-wrapper {
+  background: #0f172a !important;
+  border: 2px solid var(--ev-color, #f97316) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 8px 32px rgba(0,0,0,.5),
+              0 0 20px color-mix(in srgb, var(--ev-color, #f97316) 20%, transparent) !important;
+  overflow: hidden !important;
+}
+.ev-popup-wrap .leaflet-popup-tip {
+  background: #0f172a !important;
+}
+.ev-popup-wrap .leaflet-popup-content {
+  margin: 0 !important; width: auto !important; min-width: 180px !important;
+}
+.ev-popup {
+  padding: 10px 13px 12px;
+}
+.ev-popup-header {
+  display: flex; align-items: center; gap: 6px; margin-bottom: 6px;
+  padding: 8px 13px; margin: -10px -13px 8px;
+  background: rgba(124,58,237,.15);
+  border-bottom: 1px solid rgba(124,58,237,.2);
+}
+.ev-popup-icon { font-size: 1.1rem; }
+.ev-popup-type {
+  font-size: .62rem; font-weight: 700; letter-spacing: .8px;
+  text-transform: uppercase; color: var(--ev-color, #f97316);
+}
+.ev-popup-title {
+  font-family: 'Syne', sans-serif; font-weight: 700; font-size: .88rem;
+  color: #f1f5f9; line-height: 1.3; margin-bottom: 5px;
+}
+.ev-popup-desc {
+  font-size: .72rem; color: #94a3b8; line-height: 1.5;
+  margin-bottom: 6px; white-space: pre-wrap;
+}
+.ev-popup-meta {
+  font-size: .62rem; color: #475569; margin-bottom: 6px;
+}
+.ev-popup-del {
+  width: 100%; padding: 5px 10px; margin-top: 4px;
+  border-radius: 6px; border: 1px solid #dc2626;
+  background: rgba(220,38,38,.12); color: #f87171;
+  font-size: .7rem; font-weight: 600; cursor: pointer;
+  font-family: inherit; transition: all .14s;
+}
+.ev-popup-del:hover { background: rgba(220,38,38,.25); }
+
+/* ── Stav kreslení ──────────────────────────────────────────────── */
+#ev-draw-panel.ev-drawing .ev-draw-hint {
+  color: #a78bfa; font-style: normal; font-weight: 600;
+}
+
+/* ── Scheduling form ────────────────────────────────────────────── */
+.ev-sched-row {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+  margin-top: 4px;
+}
+.ev-dt-input {
+  font-size: .72rem !important; padding: 5px 7px !important;
+  color-scheme: dark;
+}
+.ev-sched-presets {
+  display: flex; align-items: center; gap: 5px; margin-top: 6px;
+  flex-wrap: wrap;
+}
+.ev-preset-lbl { font-size: .62rem; color: var(--muted, #7c8aaa); }
+.ev-preset-btn {
+  padding: 3px 8px; border-radius: 5px; font-size: .65rem;
+  background: var(--surf2, #1e2436); border: 1px solid var(--border, #2a3352);
+  color: var(--text, #e2e8f0); cursor: pointer; font-family: inherit;
+  transition: border-color .14s;
+}
+.ev-preset-btn:hover { border-color: #7c3aed; color: #a78bfa; }
+
+/* ── Events sidebar list ─────────────────────────────────────────── */
+.ev-sidebar-sec {
+  border-top: 1px solid var(--border, #2a3352);
+  padding: 0;
+}
+.ev-sidebar-hdr {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 12px 6px;
+  font-size: .72rem; font-weight: 700; color: #a78bfa;
+  letter-spacing: .3px;
+}
+.ev-list {
+  padding: 2px 8px 8px; display: flex; flex-direction: column; gap: 3px;
+  max-height: 200px; overflow-y: auto;
+  scrollbar-width: thin; scrollbar-color: var(--border, #2a3352) transparent;
+}
+.ev-list-empty { font-size: .7rem; color: var(--dim, #4a5470); padding: 6px 4px; font-style: italic; }
+.ev-list-row {
+  display: flex; align-items: center; gap: 7px;
+  padding: 6px 6px; border-radius: 7px; cursor: pointer;
+  border: 1px solid color-mix(in srgb, var(--ev-c) 25%, transparent);
+  background: color-mix(in srgb, var(--ev-c) 6%, transparent);
+  transition: background .14s;
+}
+.ev-list-row:hover { background: color-mix(in srgb, var(--ev-c) 14%, transparent); }
+.ev-list-row-inactive { opacity: .45; }
+.ev-list-ico { font-size: 1.1rem; flex-shrink: 0; }
+.ev-list-info { flex: 1; min-width: 0; }
+.ev-list-name { font-size: .74rem; font-weight: 600; color: var(--text, #e2e8f0);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ev-list-meta { font-size: .62rem; color: var(--muted, #7c8aaa); }
+.ev-list-actions { display: flex; gap: 3px; flex-shrink: 0; }
+.ev-list-btn {
+  width: 24px; height: 24px; border-radius: 5px;
+  background: rgba(255,255,255,.05); border: none;
+  font-size: .75rem; cursor: pointer; display: flex;
+  align-items: center; justify-content: center;
+  transition: background .13s;
+}
+.ev-list-btn:hover { background: rgba(255,255,255,.12); }
+.ev-list-del:hover { background: rgba(220,38,38,.25); }
+
+/* ── Visibility toggle switch ────────────────────────────────────── */
+.ev-vis-toggle {
+  position: relative; display: inline-block;
+  width: 32px; height: 18px; cursor: pointer;
+}
+.ev-vis-toggle input { opacity: 0; width: 0; height: 0; }
+.ev-vis-slider {
+  position: absolute; inset: 0;
+  background: var(--surf3, #252c42); border-radius: 18px;
+  transition: background .2s;
+}
+.ev-vis-slider::before {
+  content: ''; position: absolute;
+  width: 12px; height: 12px; left: 3px; bottom: 3px;
+  background: #fff; border-radius: 50%; transition: transform .2s;
+}
+.ev-vis-toggle input:checked + .ev-vis-slider { background: #7c3aed; }
+.ev-vis-toggle input:checked + .ev-vis-slider::before { transform: translateX(14px); }
+

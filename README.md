@@ -26,19 +26,26 @@ Mapa je přístupná přímo v prohlížeči bez nutnosti instalace — funguje 
 Stačí otevřít soubor `index.html` v moderním prohlížeči (Chrome, Firefox, Edge, Safari). Doporučuje se připojení k internetu — mapa stahuje podkladové dlaždice a geokóduje adresy pro navigaci.
 
 ```
-index.html          ← hlavní soubor, otevřít v prohlížeči
-css/app.css
-css/ikonky          ← obrázkové soubory
+index.html              hlavní HTML soubor
+css/
+  app.css               všechny styly
 js/
-  config.js         ← konfigurace vrstev a kategorií (editovatelný)
-  map.js
-  layers.js
-  poi.js
-  nav.js
-  ui.js
-  measure.js
-data/               ← exporty z qgis2web
-foto/               ← fotografie POI
+  config.js             ← EDITOVATELNÝ: seznam DMVS vrstev + kategorie POI
+  map.js                inicializace Leaflet mapy, podkladové mapy, přepínání podkladů
+  layers.js             IS DMVS vrstvy, popupy, pokročilý režim
+  poi.js                POI systém, filtry, vyhledávání, popupy, rozvrhy
+  nav.js                navigace OSRM, GPS tracking, heading kužel
+  ui.js                 sidebar, bottom sheet, geolokace, layout
+  measure.js            měření vzdáleností a ploch
+  weather.js            widget počasí (Open-Meteo API)
+events/
+  events-config.js      ← EDITOVATELNÝ: JSONBin klíče, typy událostí
+  events.js             modul správy a zobrazení událostí
+  events.css            styly panelu, dialogů a popupů událostí
+  README.md             instalace a konfigurace modulu
+data/
+  *.js                  exporty vrstev z qgis2web
+foto/                   fotografie POI
 ```
 
 ---
@@ -188,6 +195,61 @@ Kliknutím na objekt se otevře popup s dostupnými atributy z IS DMVS (plocha, 
 
 ---
 
+
+---
+
+### Správa událostí a hrozeb
+
+Funkce dostupná **pouze v pokročilém režimu** slouží pro vyznačení dočasných ploch na mapě — uzavírek, sportovních nebo kulturních akcí.
+
+#### Typy událostí
+
+| Ikona | Typ | Použití |
+|-------|-----|---------|
+| ⚠️ | Údržba / Výstraha | Uzavírky, opravy vozovky, nebezpečná místa |
+| 🎉 | Zábavní událost | Trhy, festivaly, kulturní akce |
+| 🏆 | Sportovní událost | Závody, turnaje, průběh tras |
+
+#### Správa událostí
+
+1. Přepnout do **Pokročilého režimu** → tlačítko ⚡ (v postranním panelu a FAB vpravo)
+2. **Přihlásit se** — při prvním spuštění nastavit heslo (min. 6 znaků, uloženo jako SHA-256 hash)
+3. Vybrat typ události a klikat body na mapě → `Enter` pro dokončení polygonu
+4. Vyplnit název, podrobnosti a volitelně **rozsah platnosti** (od–do)
+5. Událost se automaticky zobrazí/skryje dle nastaveného termínu
+
+#### Plánování událostí
+
+- Nastavení data a hodiny **zahájení** a **ukončení** přes vestavěný výběr data
+- Rychlé předvolby: 1 den · 1 týden · 1 měsíc
+- Synchronizace probíhá každých 60 sekund
+
+#### Mazání událostí
+
+Kliknutím na polygon → popup → **🗑 Zrušit událost** (vyžaduje přihlášení správce).
+
+#### Data událostí
+
+Události jsou sdíleny přes [JSONBin.io](https://jsonbin.io) — viditelné na všech zařízeních v reálném čase bez nutnosti serveru.
+
+
+---
+
+
+---
+
+### Widget počasí
+
+Minimalistický panel s aktuálním počasím pro oblast Bolatic (Open-Meteo API, bez API klíče).
+
+- **FAB** vpravo nahoře — ikona + teplota, kliknutím otevře panel
+- Aktuální stav, 12hodinová předpověď, 2denní výhled
+- Detekce bouřky dle WMO kódů s vizuálním varováním ⚡
+- Automatická aktualizace každých 15 minut
+
+
+---
+
 ## Struktura souborů
 
 ```
@@ -196,12 +258,18 @@ css/
   app.css               všechny styly
 js/
   config.js             ← EDITOVATELNÝ: seznam DMVS vrstev + kategorie POI
-  map.js                inicializace Leaflet mapy, podkladové mapy
+  map.js                inicializace Leaflet mapy, podkladové mapy, přepínání podkladových map
   layers.js             IS DMVS vrstvy, popupy, pokročilý režim
-  poi.js                POI systém, filtry, vyhledávání, popupy
+  poi.js                POI systém, filtry, vyhledávání, popupy, otevírací doby
   nav.js                navigace OSRM, GPS tracking, heading kužel
   ui.js                 sidebar, bottom sheet, geolokace, layout
   measure.js            měření vzdáleností a ploch
+  weather.js            widget počasí (Open-Meteo API)
+events/
+  events-config.js      ← EDITOVATELNÝ: JSONBin klíče, typy událostí
+  events.js             modul správy a zobrazení událostí
+  events.css            styly panelu, dialogů a popupů událostí
+  README.md             instalace a konfigurace modulu
 data/
   *.js                  exporty vrstev z qgis2web
 foto/                   fotografie POI

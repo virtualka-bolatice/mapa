@@ -1469,6 +1469,11 @@ body:not(.is-mobile) #poi-overview.poi-ov-ready { display: flex; }
   /* cats-toggle-btn — vždy viditelný v landscape */
   .cats-toggle-btn { display: flex !important; }
 
+  /* Landscape: kategorie a výsledky POI skryty — sidebar jen pro events/nav */
+  .ls-cat-body,
+  #res-list, #res-cnt, .res-hdr,
+  .sb-search, #mob-subcat-wrap { display: none !important; }
+
   /* ls-cat-body — při sbalení skrytý, při otevření flex sloupec */
   .ls-cat-body:not(.cats-collapsed) {
     display: flex !important;
@@ -2104,63 +2109,3 @@ body.nav-on #nav-pick-btn { display: none !important; }
 }
 .wx-deg { font-size: 1.1em; line-height: 1; color: inherit; opacity: .85; }
 .wx-cel { font-size: .9em; line-height: 1; color: inherit; font-weight: 700; letter-spacing: -.5px; }
-
-/* ════════════════════════════════════════════════════════════════
-   POPUP STATUS INDIKÁTOR — otevírací doba
-   ════════════════════════════════════════════════════════════════ */
-.ppop-status {
-  display: flex; align-items: center; gap: 7px;
-  margin-top: 5px; padding: 4px 8px 5px;
-  border-radius: 6px; font-size: .7rem;
-  border: 1px solid transparent;
-  transition: all .18s;
-}
-/* Otevřeno */
-.ppop-status-open {
-  background: linear-gradient(120deg, rgba(34,197,94,.12), rgba(16,185,129,.06));
-  border-color: rgba(34,197,94,.25);
-}
-.ppop-status-open .ppop-status-lbl { color: #4ade80; font-weight: 700; }
-
-/* Brzy zavírá */
-.ppop-status-closing {
-  background: linear-gradient(120deg, rgba(245,158,11,.14), rgba(234,179,8,.06));
-  border-color: rgba(245,158,11,.3);
-}
-.ppop-status-closing .ppop-status-lbl { color: #fbbf24; font-weight: 700; }
-.ppop-status-closing .ppop-status-dot {
-  animation: dotBlink .8s ease-in-out infinite alternate;
-}
-
-/* Zavřeno */
-.ppop-status-closed {
-  background: rgba(239,68,68,.06);
-  border-color: rgba(239,68,68,.18);
-}
-.ppop-status-closed .ppop-status-lbl { color: #f87171; font-weight: 600; }
-
-/* Dot */
-.ppop-status-dot {
-  width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
-  box-shadow: 0 0 6px currentColor;
-}
-.ppop-status-open .ppop-status-dot    { box-shadow: 0 0 8px #22c55e; }
-.ppop-status-closing .ppop-status-dot { box-shadow: 0 0 8px #f59e0b; }
-.ppop-status-closed .ppop-status-dot  { box-shadow: none; opacity: .7; }
-
-@keyframes dotBlink {
-  from { opacity: 1; transform: scale(1); }
-  to   { opacity: .4; transform: scale(.75); }
-}
-
-/* Rozvrh toggle button inside status bar */
-.ppop-status-toggle {
-  margin-left: auto; padding: 2px 7px;
-  border: 1px solid rgba(255,255,255,.12);
-  border-radius: 4px; background: rgba(255,255,255,.06);
-  color: var(--muted); font-family: inherit; font-size: .62rem;
-  cursor: pointer; white-space: nowrap;
-  transition: all .15s;
-}
-.ppop-status-toggle:hover { background: rgba(255,255,255,.14); color: var(--text); }
-.ppop-status-toggle.open  { border-color: var(--acc3); color: var(--acc3); }

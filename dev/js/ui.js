@@ -443,6 +443,8 @@ window.addEventListener('load', async () => {
   ld('Hotovo ✓');
   document.getElementById('loading').classList.add('out');
   setTimeout(() => document.getElementById('loading').remove(), 500);
+
+  if (typeof initEvents === 'function') initEvents(map);
 });
 
 // ── Kategorie accordion — landscape default zavřený ─────────────
