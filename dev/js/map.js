@@ -188,6 +188,7 @@ TILES.orto.on('tileerror', () => {
 });
 
 TILES.mapa.addTo(map);
+map.setMaxZoom(20); // počáteční maxZoom pro mapu
 
 // ── PŘEPNUTÍ PODKLADU ────────────────────────────────────────────
 function setTile(key) {
@@ -199,6 +200,9 @@ function setTile(key) {
   activeTile         = key;
   ortoFallbackActive = false;
   TILES[key].addTo(map);
+
+  // Dynamické maxZoom podle vrstvy — ortofoto omezeno na 18
+  map.setMaxZoom(key === 'orto' ? 19 : 20);
 
   // QGIS vrstvy zpět navrch
   qgisLayers.forEach(l => { if (l.visible && l.leaflet) l.leaflet.bringToFront(); });

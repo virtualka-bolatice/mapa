@@ -1474,6 +1474,9 @@ body:not(.is-mobile) #poi-overview.poi-ov-ready { display: flex; }
   #res-list, #res-cnt, .res-hdr,
   .sb-search, #mob-subcat-wrap { display: none !important; }
 
+  /* Landscape + pokročilý: skryj i header Kategorie */
+  body.adv-on .sb-sec-l { display: none !important; }
+
   /* ls-cat-body — při sbalení skrytý, při otevření flex sloupec */
   .ls-cat-body:not(.cats-collapsed) {
     display: flex !important;
