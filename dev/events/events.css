@@ -11,7 +11,7 @@
 #ev-draw-panel {
   position: fixed;
   top: calc(var(--hdr, 48px) + 8px);
-  right: 54px;
+  right: 75px;
   z-index: 1060;
   width: 220px;
   background: var(--surface, #161b27);
