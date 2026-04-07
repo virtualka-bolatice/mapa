@@ -485,11 +485,11 @@ function _createPanel() {
   panel.innerHTML = `
     <div class="ev-panel-header">
       <span class="ev-panel-title">⚡ Správa událostí</span>
-      <button class="ev-panel-close" onclick="document.getElementById('ev-draw-panel').style.display='none'" title="Zavřít">✕</button>
+      <button class="ev-panel-close" id="ev-panel-close">✕</button>
     </div>
     <div class="ev-auth-bar"></div>
     <div class="ev-draw-btns">
-      <div class="ev-draw-hint"></div>
+      <div class="ev-draw-hint">VÝBĚR UDÁLOSTÍ</div>
       <div class="ev-type-btns">
         ${Object.entries(EVENTS_CONFIG.EVENT_TYPES).map(([k,v]) => `
           <button class="ev-type-btn" style="--ev-c:${v.color}"
@@ -500,6 +500,82 @@ function _createPanel() {
   `;
   document.body.appendChild(panel);
   _evUpdateUI();
+  _makePanelDraggable(panel);
+
+  // Přidat event listener pro close button
+  const closeBtn = panel.querySelector('#ev-panel-close');
+  if (closeBtn) {
+    closeBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      panel.style.display = 'none';
+    });
+  }
+
+  // Zavření panelu klávesou Esc
+document.addEventListener('keydown', function escHandler(e) {
+  if (e.key === 'Escape') {
+    const panel = document.getElementById('ev-draw-panel');
+    if (panel && panel.style.display !== 'none') {
+      panel.style.display = 'none';
+    }
+  }
+});
+}
+
+function _makePanelDraggable(panel) {
+  // Pouze na PC (bez touch)
+  if ('ontouchstart' in window) return;
+
+  const header = panel.querySelector('.ev-panel-header');
+  if (!header) return;
+
+  let isDragging = false;
+  let startX, startY, initialX, initialY;
+
+  header.style.cursor = 'move';
+
+  header.addEventListener('mousedown', (e) => {
+    isDragging = true;
+    startX = e.clientX;
+    startY = e.clientY;
+    const rect = panel.getBoundingClientRect();
+    initialX = rect.left;
+    initialY = rect.top;
+    panel.style.position = 'fixed';
+    panel.style.left = `${rect.left}px`;
+    panel.style.top = `${rect.top}px`;
+    panel.style.zIndex = '1061';
+    panel.style.width = `${rect.width}px`;
+    e.preventDefault();
+  });
+
+  document.addEventListener('mousemove', (e) => {
+    if (!isDragging) return;
+    const dx = e.clientX - startX;
+    const dy = e.clientY - startY;
+    let newX = initialX + dx;
+    let newY = initialY + dy;
+
+    // Omezení na viewport
+    const panelWidth = panel.offsetWidth;
+    const panelHeight = panel.offsetHeight;
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+
+    newX = Math.max(0, Math.min(newX, viewportWidth - panelWidth));
+    newY = Math.max(0, Math.min(newY, viewportHeight - panelHeight));
+
+    panel.style.left = `${newX}px`;
+    panel.style.top = `${newY}px`;
+  });
+
+  document.addEventListener('mouseup', () => {
+    if (isDragging) {
+      isDragging = false;
+      panel.style.zIndex = '1060';
+      panel.style.width = ''; // resetovat width
+    }
+  });
 }
 
 window._evStartDraw = function(type) {
@@ -746,19 +822,41 @@ function _evIsActive(ev, now = new Date()) {
 }
 
 // ── FAB TLAČÍTKO (v pokročilém režimu) ───────────────────────────
+// ── FAB TLAČÍTKO (v pokročilém režimu) ───────────────────────────
 function _createFab() {
   if (document.getElementById('ev-fab')) return;
+
   const fab = document.createElement('button');
   fab.id = 'ev-fab';
   fab.className = 'fab';
   fab.title = 'Správa událostí';
   fab.textContent = '⚡';
+  
   fab.onclick = () => {
-    const panel = document.getElementById('ev-draw-panel');
-    if (!panel) { _createPanel(); return; }
-    panel.style.display = panel.style.display === 'none' ? '' : 'none';
+    let panel = document.getElementById('ev-draw-panel');
+    
+    // Ještě neexistuje → vytvořit
+    if (!panel) {
+      _createPanel();
+      panel = document.getElementById('ev-draw-panel');
+      if (!panel) return;
+    }
+
+    // Toggle logika
+    if (panel.style.display === 'none' || panel.style.display === '') {
+      // Otevřít
+      panel.style.display = 'block';
+      panel.classList.add('ev-panel-show');
+      setTimeout(() => {
+        panel.classList.remove('ev-panel-show');
+      }, 600);
+    } else {
+      // Zavřít
+      panel.style.display = 'none';
+    }
   };
-  // Vlož do fab-col pokud existuje
+
+  // Vložení do stránky
   const fabCol = document.getElementById('fab-col');
   if (fabCol) fabCol.appendChild(fab);
   else document.body.appendChild(fab);
