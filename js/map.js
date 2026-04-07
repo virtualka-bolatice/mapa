@@ -188,6 +188,7 @@ TILES.orto.on('tileerror', () => {
 });
 
 TILES.mapa.addTo(map);
+map.setMaxZoom(20); // počáteční maxZoom pro mapu
 
 // ── PŘEPNUTÍ PODKLADU ────────────────────────────────────────────
 function setTile(key) {
@@ -199,6 +200,9 @@ function setTile(key) {
   activeTile         = key;
   ortoFallbackActive = false;
   TILES[key].addTo(map);
+
+  // Dynamické maxZoom podle vrstvy — ortofoto omezeno na 18
+  map.setMaxZoom(key === 'orto' ? 19 : 20);
 
   // QGIS vrstvy zpět navrch
   qgisLayers.forEach(l => { if (l.visible && l.leaflet) l.leaflet.bringToFront(); });
@@ -220,4 +224,70 @@ function lsTileToggle() {
 function _syncLsTileBtn() {
   const btn = document.getElementById('ls-tile-btn');
   if (btn) btn.textContent = (activeTile === 'mapa') ? '🗺 Mapa' : '🛰 Ortofoto';
+}
+
+// ── SCREENSHOT MAPY ──────────────────────────────────────────────
+// Pořídí čistý snímek bez UI prvků pomocí Leaflet canvas/SVG capture
+async function mapScreenshot() {
+  const btn = document.getElementById('map-screenshot-btn');
+  if (btn) { btn.style.opacity = '.3'; btn.style.pointerEvents = 'none'; }
+
+  // Skryj všechny UI prvky nad mapou
+  const hide = [
+    'header', '#sidebar', '#fab-col', '#dbadge', '#msr-panel',
+    '#nav-widget', '#nav-pick-btn', '#nav-confirm', '#nav-recenter-btn',
+    '#stats-panel', '#wx-fab', '#wx-panel', '#ev-draw-panel', '#ev-fab',
+    '#map-screenshot-btn', '#lightbox', '.leaflet-control-zoom',
+    '.leaflet-control-scale', '#sb-handle', '#mob-search',
+  ].map(s => document.querySelector(s)).filter(Boolean);
+
+  const prevVis = hide.map(el => el.style.visibility);
+  hide.forEach(el => el.style.visibility = 'hidden');
+
+  // Krátká pauza pro rerender
+  await new Promise(r => setTimeout(r, 120));
+
+  try {
+    // leaflet-image není dostupný — použijeme html2canvas přes CDN nebo nativní approach
+    // Nejspolehlivější: tileLayer canvas kombinace
+    const mapContainer = document.getElementById('map');
+    const w = mapContainer.offsetWidth;
+    const h = mapContainer.offsetHeight;
+
+    // Zkusíme html2canvas dynamicky načíst
+    if (typeof html2canvas === 'undefined') {
+      const script = document.createElement('script');
+      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+      document.head.appendChild(script);
+      await new Promise((res, rej) => { script.onload = res; script.onerror = rej; });
+    }
+
+    const canvas = await html2canvas(mapContainer, {
+      useCORS:       true,
+      allowTaint:    false,
+      backgroundColor: null,
+      scale:         window.devicePixelRatio || 1,
+      logging:       false,
+      ignoreElements: el => el.id === 'map-screenshot-btn',
+    });
+
+    // Přidej watermark
+    const ctx = canvas.getContext('2d');
+    ctx.font = 'bold 13px DM Sans, sans-serif';
+    ctx.fillStyle = 'rgba(255,255,255,0.7)';
+    ctx.fillText('Interaktivní mapa Bolatic', 10, canvas.height - 10);
+
+    // Stáhnout
+    const link = document.createElement('a');
+    link.download = `mapa-bolatice-${new Date().toISOString().slice(0,10)}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+
+  } catch(e) {
+    console.warn('[screenshot] Chyba:', e);
+    alert('Snímek se nepodařilo pořídit. Použij Ctrl+PrintScreen pro ruční snímek.');
+  } finally {
+    hide.forEach((el, i) => el.style.visibility = prevVis[i]);
+    if (btn) { btn.style.opacity = ''; btn.style.pointerEvents = ''; }
+  }
 }

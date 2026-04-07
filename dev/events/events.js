@@ -171,12 +171,13 @@ window._evDeleteConfirm = function(id) {
     body:  '<p style="color:var(--muted);font-size:.82rem">Tato akce je nevratná.</p>',
     confirmLabel: '🗑 Zrušit událost',
     confirmClass: 'ev-btn-danger',
-    onConfirm: async () => {
+    onConfirm: () => {
+      // Dialog se zavře okamžitě — write probíhá async na pozadí
       EV.map.closePopup();
       EV.data = EV.data.filter(e => e.id !== id);
       _renderEvents();
       _renderEvList();
-      await _bin.write(EV.data);
+      _bin.write(EV.data); // fire-and-forget — neblokuje UI
     },
   });
 };
@@ -256,20 +257,24 @@ async function _finishDrawing() {
   _cleanupDraw();
 
   // Dotázat se na podrobnosti
-  _evShowEventForm(type, async ({ title, desc }) => {
+  _evShowEventForm(type, async ({ title, desc, type: selType, startAt, endAt }) => {
+    const now = new Date();
     const ev = {
       id:        crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36),
-      type,
+      type:      selType || type,
       title,
-      desc,
+      desc:      desc || null,
       coords:    pts.map(p => [p.lat, p.lng]),
-      createdAt: new Date().toISOString(),
+      createdAt: now.toISOString(),
+      startAt:   startAt || null,
+      endAt:     endAt   || null,
     };
+    ev._hidden = !_evIsActive(ev, now);
     EV.data.push(ev);
-    _addPolygonLayer(ev);
-    const ok = await _bin.write(EV.data);
+    if (!ev._hidden) _addPolygonLayer(ev);
+    _renderPlanned(); // refresh planned layer (guards itself)
     _renderEvList();
-    if (!ok) console.warn('[events] Uložení na JSONBin selhalo — zkontroluj konfiguraci.');
+    _bin.write(EV.data).catch(e => console.warn('[events] Uložení selhalo:', e));
   });
 }
 
@@ -321,15 +326,19 @@ function _evShowEventForm(type, onSubmit) {
       const desc     = document.getElementById('ev-f-desc')?.value.trim();
       const selType  = document.getElementById('ev-f-type')?.value || type;
       const useSched = document.getElementById('ev-f-use-sched')?.checked;
-      const startAt  = useSched ? document.getElementById('ev-f-start')?.value : null;
-      const endAt    = useSched ? document.getElementById('ev-f-end')?.value   : null;
+      const startRaw = useSched ? document.getElementById('ev-f-start')?.value : null;
+      const endRaw   = useSched ? document.getElementById('ev-f-end')?.value   : null;
       if (!title) { alert('Zadej název události.'); return false; }
-      if (useSched && endAt && startAt && new Date(endAt) <= new Date(startAt)) {
+      // datetime-local vrátí "YYYY-MM-DDTHH:MM" — parsuj jako lokální čas (Praha)
+      const _parseLocal = s => s ? new Date(s) : null; // prohlížeč správně parsuje jako lokální
+      const startDt = _parseLocal(startRaw);
+      const endDt   = _parseLocal(endRaw);
+      if (useSched && startDt && endDt && endDt <= startDt) {
         alert('Datum ukončení musí být po datu zahájení.'); return false;
       }
       onSubmit({ title, desc, type: selType,
-        startAt: startAt ? new Date(startAt).toISOString() : null,
-        endAt:   endAt   ? new Date(endAt).toISOString()   : null,
+        startAt: startDt ? startDt.toISOString() : null,
+        endAt:   endDt   ? endDt.toISOString()   : null,
       });
     },
   });
@@ -407,6 +416,10 @@ function _evUpdateUI() {
 
   const drawBtns = panel.querySelector('.ev-draw-btns');
   if (drawBtns) drawBtns.style.display = EV.loggedIn ? '' : 'none';
+
+  // Planned polygons + list refresh immediately on login/logout
+  _renderPlanned();
+  _renderEvList();
 }
 
 // ── DIALOG ────────────────────────────────────────────────────────
@@ -428,10 +441,26 @@ function _evShowDialog({ title, body, confirmLabel, confirmClass, onConfirm }) {
     </div>`;
   overlay.style.display = 'flex';
 
-  document.getElementById('ev-dialog-confirm').onclick = async () => {
+  const confirmBtn = document.getElementById('ev-dialog-confirm');
+  confirmBtn.onclick = async () => {
     const result = await onConfirm();
     if (result !== false) _evCloseDialog();
   };
+
+  // Enter v dialogu = potvrzení
+  const _dlgKeydown = async (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      const focused = document.activeElement?.tagName;
+      if (focused !== 'TEXTAREA' && focused !== 'SELECT') {
+        e.preventDefault();
+        document.removeEventListener('keydown', _dlgKeydown);
+        const result = await onConfirm();
+        if (result !== false) _evCloseDialog();
+      }
+    }
+    if (e.key === 'Escape') { document.removeEventListener('keydown', _dlgKeydown); _evCloseDialog(); }
+  };
+  document.addEventListener('keydown', _dlgKeydown);
 
   // Focus první input
   setTimeout(() => overlay.querySelector('input, select, textarea')?.focus(), 80);
@@ -440,6 +469,7 @@ function _evShowDialog({ title, body, confirmLabel, confirmClass, onConfirm }) {
 window._evCloseDialog = function() {
   const o = document.getElementById('ev-dialog-overlay');
   if (o) o.style.display = 'none';
+  // listener se sám odstraní při triggeru, ale pro jistotu odstraníme přes stored ref
 };
 
 function _evShowBadge(msg) {
@@ -479,28 +509,206 @@ window._evStartDraw = function(type) {
 };
 
 // ── SCHEDULING HELPERS ───────────────────────────────────────────
+// Formátuje Date na lokální "YYYY-MM-DDTHH:MM" pro datetime-local input (Praha CET/CEST)
+function _fmtDTLocal(d) {
+  // Offset v minutách (Praha: UTC+1 zima, UTC+2 léto — JS .getTimezoneOffset() vrátí záporné)
+  const off = -d.getTimezoneOffset(); // minuty (kladné = ahead of UTC)
+  const local = new Date(d.getTime() + (off + d.getTimezoneOffset()) * 60000);
+  // Použijeme lokální metody — správné pro časové pásmo prohlížeče (Praha)
+  const pad = n => String(n).padStart(2,'0');
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+// Formátuje ISO string pro zobrazení v UI (lokální čas Prahy)
+function _fmtLocalDT(iso) {
+  const d = new Date(iso);
+  return d.toLocaleString('cs-CZ', {
+    day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit',
+    timeZone: 'Europe/Prague'
+  });
+}
+
 window._evToggleSchedInputs = function(cb) {
   const el = document.getElementById('ev-sched-inputs');
   if (el) el.style.display = cb.checked ? '' : 'none';
   if (cb.checked) {
-    // Defaultně: od teď do +1 den
     const now = new Date();
     const end = new Date(now.getTime() + 86400000);
-    const fmt = d => d.toISOString().slice(0,16);
     const si = document.getElementById('ev-f-start');
     const ei = document.getElementById('ev-f-end');
-    if (si && !si.value) si.value = fmt(now);
-    if (ei && !ei.value) ei.value = fmt(end);
+    if (si && !si.value) si.value = _fmtDTLocal(now);
+    if (ei && !ei.value) ei.value = _fmtDTLocal(end);
   }
 };
 window._evPreset = function(days) {
   const now = new Date();
   const end = new Date(now.getTime() + days * 86400000);
-  const fmt = d => d.toISOString().slice(0,16);
   const si = document.getElementById('ev-f-start');
   const ei = document.getElementById('ev-f-end');
-  if (si) si.value = fmt(now);
-  if (ei) ei.value = fmt(end);
+  if (si) si.value = _fmtDTLocal(now);
+  if (ei) ei.value = _fmtDTLocal(end);
+};
+
+
+
+// ── PLÁNOVANÉ UDÁLOSTI — šedé polygony pouze pro přihlášeného správce ─────
+let _plannedLayer = null;
+
+function _renderPlanned() {
+  if (_plannedLayer) { EV.map.removeLayer(_plannedLayer); _plannedLayer = null; }
+  if (!EV.loggedIn) return;
+
+  const now = new Date();
+  const planned = EV.data.filter(ev => ev.startAt && new Date(ev.startAt) > now);
+  if (!planned.length) return;
+
+  _plannedLayer = L.featureGroup();
+  planned.forEach(ev => {
+    const latlngs = ev.coords.map(c => [c[0], c[1]]);
+    const poly = L.polygon(latlngs, {
+      color: '#64748b', weight: 1.5, dashArray: '4,4',
+      fillColor: '#475569', fillOpacity: 0.12,
+      interactive: true,
+    });
+    poly.on('click', (e) => {
+      L.DomEvent.stopPropagation(e);
+      _openPlannedPopup(ev, poly);
+    });
+    _plannedLayer.addLayer(poly);
+  });
+  _plannedLayer.addTo(EV.map);
+}
+
+function _openPlannedPopup(ev, poly) {
+  const cfg = EVENTS_CONFIG.EVENT_TYPES[ev.type] || EVENTS_CONFIG.EVENT_TYPES.udrzba;
+  const startStr = ev.startAt
+    ? new Date(ev.startAt).toLocaleString('cs-CZ', {day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',timeZone:'Europe/Prague'})
+    : '—';
+  const endStr = ev.endAt
+    ? new Date(ev.endAt).toLocaleString('cs-CZ', {day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',timeZone:'Europe/Prague'})
+    : '—';
+
+  const content = `
+    <div class="ev-popup ev-popup-planned">
+      <div class="ev-popup-planned-badge">
+        <span>⏳</span> NAPLÁNOVÁNO <span>⏳</span>
+      </div>
+      <div class="ev-popup-header">
+        <span class="ev-popup-icon">${cfg.icon}</span>
+        <span class="ev-popup-type">${cfg.label}</span>
+      </div>
+      <div class="ev-popup-title">${_esc(ev.title)}</div>
+      ${ev.desc ? `<div class="ev-popup-desc">${_esc(ev.desc)}</div>` : ''}
+      <div class="ev-popup-sched">
+        <div class="ev-sched-line">▶ Zobrazit od: <strong>${startStr}</strong></div>
+        ${ev.endAt ? `<div class="ev-sched-line">■ Skrýt po: <strong>${endStr}</strong></div>` : ''}
+      </div>
+      <button class="ev-popup-del" onclick="_evDeleteConfirm('${ev.id}')">🗑 Zrušit událost</button>
+    </div>`;
+
+  poly.bindPopup(content, { maxWidth: 280, className: 'ev-popup-wrap ev-popup-wrap-planned' }).openPopup();
+}
+
+// ── SEZNAM UDÁLOSTÍ V SIDEBARU ────────────────────────────────────
+function _renderEvList() {
+  const container = document.getElementById('ev-sidebar-list');
+  if (!container) return;
+
+  const now = new Date();
+  const advMode = document.body.classList.contains('adv-on');
+
+  // Pokročilý režim: aktivní + naplánované; normální režim: pouze aktivní
+  const visible = EV.data.filter(ev => {
+    if (ev.endAt && new Date(ev.endAt) < now) return false; // skončené
+    if (!advMode && !_evIsActive(ev, now)) return false;     // v normálním: jen aktivní
+    return true;
+  });
+
+  // Zobraz sekci:
+  // - přihlášený správce: vždy pokud jsou aktivní nebo plánované
+  // - běžný uživatel: jen pokud jsou aktivní události
+  const sec = document.getElementById('ev-sidebar-sec');
+  const activeCount  = visible.filter(ev => _evIsActive(ev, now)).length;
+  const plannedCount = visible.filter(ev => !_evIsActive(ev, now)).length;
+  const shouldShow = EV.loggedIn ? visible.length > 0 : activeCount > 0;
+  if (sec) sec.style.display = shouldShow ? '' : 'none';
+  if (!shouldShow) { if (sec) sec.querySelector && (sec.querySelector('#ev-sidebar-list').innerHTML = ''); return; }
+
+  if (!visible.length) {
+    container.innerHTML = '<div class="ev-list-empty">Žádné aktivní události</div>';
+    return;
+  }
+
+  const frag = document.createDocumentFragment();
+  visible.forEach(ev => {
+    const cfg     = EVENTS_CONFIG.EVENT_TYPES[ev.type] || EVENTS_CONFIG.EVENT_TYPES.udrzba;
+    const active  = _evIsActive(ev, now);
+    const isFuture = ev.startAt && new Date(ev.startAt) > now;
+
+    let statusLabel = '';
+    if (isFuture && ev.startAt) {
+      const d = _fmtLocalDT(ev.startAt);
+      statusLabel = `<span class="ev-status ev-status-future">⏳ od ${d}</span>`;
+    } else if (active && ev.endAt) {
+      const d = _fmtLocalDT(ev.endAt);
+      statusLabel = `<span class="ev-status ev-status-active">🟢 do ${d}</span>`;
+    } else if (active) {
+      statusLabel = `<span class="ev-status ev-status-active">🟢 Aktivní</span>`;
+    }
+
+    const row = document.createElement('div');
+    row.className = 'ev-list-row' + (isFuture ? ' ev-list-row-future' : '');
+    row.style.setProperty('--ev-c', cfg.color);
+    row.innerHTML = `
+      <span class="ev-list-ico">${cfg.icon}</span>
+      <div class="ev-list-info">
+        <div class="ev-list-name">${_esc(ev.title)}</div>
+        <div class="ev-list-meta">${cfg.label}</div>
+        ${statusLabel}
+      </div>
+      <div class="ev-list-actions">
+        <button class="ev-list-btn" title="Přejít na mapě" onclick="_evFlyTo('${ev.id}')">🎯</button>
+        ${EV.loggedIn ? `<button class="ev-list-btn ev-list-del" title="Smazat" onclick="_evDeleteConfirm('${ev.id}')">🗑</button>` : ''}
+      </div>`;
+    frag.appendChild(row);
+  });
+
+  container.innerHTML = '';
+  container.appendChild(frag);
+}
+
+function _injectEvSidebarSection() {
+  const sec = document.getElementById('ev-sidebar-sec');
+  if (sec) _renderEvList();
+}
+
+window._evFlyTo = function(id) {
+  const ev = EV.data.find(e => e.id === id);
+  if (!ev || !ev.coords?.length) return;
+  const latlngs = ev.coords.map(c => L.latLng(c[0], c[1]));
+  EV.map.fitBounds(L.latLngBounds(latlngs), { padding: [30, 30], maxZoom: 17 });
+};
+
+window._evToggleVisibility = function(visible) {
+  const list = document.getElementById('ev-sidebar-list');
+  
+  // Skryj/zobraz seznam
+  if (list) {
+    if (visible) {
+      list.classList.remove('ev-list-closed');
+      list.classList.add('ev-list-open');
+    } else {
+      list.classList.remove('ev-list-open');
+      list.classList.add('ev-list-closed');
+    }
+  }
+  
+  // Přepni viditelnost polygonů na mapě
+  if (visible) {
+    EV.layer.addTo(EV.map);
+  } else {
+    EV.map.removeLayer(EV.layer);
+  }
 };
 
 // ── SCHEDULING ENGINE — lightweight visibility check ──────────────
@@ -516,11 +724,17 @@ function _checkSchedule() {
   let changed = false;
   EV.data.forEach(ev => {
     const shouldShow = _evIsActive(ev, now);
-    const wasHidden = ev._hidden;
-    ev._hidden = !shouldShow;
-    if (wasHidden !== ev._hidden) changed = true;
+    const wasHidden = ev._hidden; // may be undefined on first load
+    const newHidden = !shouldShow;
+    ev._hidden = newHidden;
+    // undefined !== false → triggers on first run = correct initial render
+    if (wasHidden !== newHidden) changed = true;
   });
-  if (changed) { _renderEvents(); _renderEvList(); }
+  if (changed) {
+    _renderEvents();        // active polygons (all users)
+    _renderPlanned();       // planned grey polygons (admin only — function guards itself)
+    _renderEvList();        // sidebar list
+  }
 }
 function _evIsActive(ev, now = new Date()) {
   if (ev.startAt && new Date(ev.startAt) > now) return false;
@@ -556,7 +770,11 @@ async function initEvents(mapInstance) {
   const stored = await _bin.readAll();
   EV.data    = stored.events;
   EV._pwdHash = stored.pwdHash;
+  _startScheduler();  // nastaví _hidden na všech událostech + renderEvents/Planned/List
+  // Výchozí render pro případ, že scheduler ještě nespustil
   _renderEvents();
+  _renderEvList();
+  _injectEvSidebarSection();
 
   // Poslouchej na pokročilý režim
   _syncEvFab();
@@ -568,6 +786,8 @@ async function initEvents(mapInstance) {
 function _syncEvFab() {
   const check = () => {
     const adv = document.body.classList.contains('adv-on');
+    // Přepočítej seznam při změně režimu
+    _renderEvList();
     let fab = document.getElementById('ev-fab');
     if (adv && !fab) {
       _createFab();
@@ -585,3 +805,5 @@ function _syncEvFab() {
   obs.observe(document.body, { attributes: true, attributeFilter: ['class'] });
   check(); // počáteční stav
 }
+
+

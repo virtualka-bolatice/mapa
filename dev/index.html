@@ -196,7 +196,7 @@
 
   <!-- #tilt-wrap: perspective container, overflow:hidden klipuje černé hrany při tiltu -->
   <div id="tilt-wrap">
-    <div id="map"></div>
+  <div id="map"></div>
   </div>
 </div>
 
@@ -238,13 +238,18 @@
     <!-- UDÁLOSTI — pokročilý režim (JS naplní) -->
     <div id="ev-sidebar-sec" class="desk-only" style="display:none">
       <div class="ev-sidebar-hdr">
-        <span>⚡ Události</span>
-        <label class="ev-vis-toggle" title="Zobrazit/skrýt události na mapě">
-          <input type="checkbox" id="ev-visible-cb" checked onchange="_evToggleVisibility(this.checked)">
-          <span class="ev-vis-slider"></span>
-        </label>
+        <div class="ev-sidebar-hdr-title">
+          <span class="ev-sidebar-hdr-icon">⚡</span>
+          <span>Události</span>
+        </div>
+        <div class="ev-sidebar-hdr-actions">
+          <label class="ev-vis-toggle" title="Zobrazit/skrýt události a seznam" onclick="event.stopPropagation()">
+            <input type="checkbox" id="ev-visible-cb" checked onchange="_evToggleVisibility(this.checked)" aria-label="Zobrazit/skrýt události">
+            <span class="ev-vis-slider"></span>
+          </label>
+        </div>
       </div>
-      <div id="ev-sidebar-list" class="ev-list">
+      <div id="ev-sidebar-list" class="ev-list ev-list-open">
         <div class="ev-list-empty">Načítám…</div>
       </div>
     </div>
@@ -360,6 +365,9 @@
   <button class="fab" id="fab-msr"   title="Měření"          onclick="toggleMsr()">📏</button>
   <button class="fab" id="fab-geo"   title="Moje poloha"     onclick="geolocate()">📍</button>
   <button class="fab" id="fab-nav"   title="Zrušit trasu"    onclick="clearNav()">✕</button>
+  <button class="fab desk-only" id="map-screenshot-btn" title="Pořídit snímek mapy" onclick="mapScreenshot()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+  </button>
 </div>
 
 <!-- ══ PŘÍJEZDOVÁ STATISTIKA (modal při dosažení cíle) ══════════ -->

@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="cs">
+<link rel="stylesheet" href="events/events.css">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -81,7 +82,6 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/app.css">
-  <link rel="stylesheet" href="events/events.css">
 </head>
 <body>
 
@@ -196,7 +196,7 @@
 
   <!-- #tilt-wrap: perspective container, overflow:hidden klipuje černé hrany při tiltu -->
   <div id="tilt-wrap">
-    <div id="map"></div>
+  <div id="map"></div>
   </div>
 </div>
 
@@ -233,6 +233,25 @@
         <span class="qgis-hdr-cnt" id="qgis-cnt">–</span>
       </div>
       <div id="qgis-list"></div>
+    </div>
+
+    <!-- UDÁLOSTI — pokročilý režim (JS naplní) -->
+    <div id="ev-sidebar-sec" class="desk-only" style="display:none">
+      <div class="ev-sidebar-hdr">
+        <div class="ev-sidebar-hdr-title">
+          <span class="ev-sidebar-hdr-icon">⚡</span>
+          <span>Události</span>
+        </div>
+        <div class="ev-sidebar-hdr-actions">
+          <label class="ev-vis-toggle" title="Zobrazit/skrýt události a seznam" onclick="event.stopPropagation()">
+            <input type="checkbox" id="ev-visible-cb" checked onchange="_evToggleVisibility(this.checked)" aria-label="Zobrazit/skrýt události">
+            <span class="ev-vis-slider"></span>
+          </label>
+        </div>
+      </div>
+      <div id="ev-sidebar-list" class="ev-list ev-list-open">
+        <div class="ev-list-empty">Načítám…</div>
+      </div>
     </div>
 
     <!-- KATEGORIE POI -->
@@ -346,6 +365,9 @@
   <button class="fab" id="fab-msr"   title="Měření"          onclick="toggleMsr()">📏</button>
   <button class="fab" id="fab-geo"   title="Moje poloha"     onclick="geolocate()">📍</button>
   <button class="fab" id="fab-nav"   title="Zrušit trasu"    onclick="clearNav()">✕</button>
+  <button class="fab desk-only" id="map-screenshot-btn" title="Pořídit snímek mapy" onclick="mapScreenshot()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+  </button>
 </div>
 
 <!-- ══ PŘÍJEZDOVÁ STATISTIKA (modal při dosažení cíle) ══════════ -->
@@ -437,10 +459,6 @@
 <script src="js/measure.js"></script>
 <script src="js/nav.js"></script>
 
-<!-- výstrahy a události (např. uzavírky) — načítají se z events/events-config.js -->
-<script src="events/events-config.js"></script>
-<script src="events/events.js"></script>
-
 <!-- ══ POI DATA — staticky před ui.js → window.json_POI dostupné při loadPOI() ══
      Zkouší oba umístění. Chyba při nenalezení je potlačena (onerror=void 0). ══════ -->
 <script src="data/POI_0.js" onerror="void 0"></script>
@@ -457,6 +475,8 @@
   <div id="wx-widget"><div class="wx-loading">⏳ Načítám počasí…</div></div>
 </div>
 
+<script src="events/events-config.js"></script>
+<script src="events/events.js"></script>
 <script src="js/weather.js"></script>
 <script>window.addEventListener("load",()=>{ if(typeof initAladinWeather==="function") initAladinWeather(); });</script>
 <script>
