@@ -601,7 +601,7 @@ function _openPlannedPopup(ev, poly) {
       ${ev.desc ? `<div class="ev-popup-desc">${_esc(ev.desc)}</div>` : ''}
       <div class="ev-popup-sched">
         <div class="ev-sched-line">▶ Zobrazit od: <strong>${startStr}</strong></div>
-        ${ev.endAt ? `<div class="ev-sched-line">■ Skrýt po: <strong>${endStr}</strong></div>` : ''}
+        ${ev.endAt ? `<div class="ev-sched-line">✖ Skrýt po: <strong>${endStr}</strong></div>` : ''}
       </div>
       <button class="ev-popup-del" onclick="_evDeleteConfirm('${ev.id}')">🗑 Zrušit událost</button>
     </div>`;
