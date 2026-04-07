@@ -414,8 +414,7 @@ function _evUpdateUI() {
        <button class="ev-btn ev-btn-sm" onclick="_evLogout()">Odhlásit</button>`
     : `<button class="ev-btn ev-btn-primary ev-btn-sm" onclick="_evLogin()">🔑 Přihlásit se</button>`;
 
-  const drawBtns = panel.querySelector('.ev-draw-btns');
-  if (drawBtns) drawBtns.style.display = EV.loggedIn ? '' : 'none';
+  panel.classList.toggle('ev-logged-in', EV.loggedIn);
 
   // Planned polygons + list refresh immediately on login/logout
   _renderPlanned();
@@ -489,7 +488,7 @@ function _createPanel() {
       <button class="ev-panel-close" onclick="document.getElementById('ev-draw-panel').style.display='none'" title="Zavřít">✕</button>
     </div>
     <div class="ev-auth-bar"></div>
-    <div class="ev-draw-btns" style="display:none">
+    <div class="ev-draw-btns">
       <div class="ev-draw-hint"></div>
       <div class="ev-type-btns">
         ${Object.entries(EVENTS_CONFIG.EVENT_TYPES).map(([k,v]) => `
@@ -616,11 +615,13 @@ function _renderEvList() {
 
   const now = new Date();
   const advMode = document.body.classList.contains('adv-on');
+  const showPlanned = advMode && EV.loggedIn;
 
-  // Pokročilý režim: aktivní + naplánované; normální režim: pouze aktivní
+  // Pokročilý režim: pouze přihlášený správce vidí plánované události;
+  // ostatní uživatelé vidí jen aktuálně aktivní události.
   const visible = EV.data.filter(ev => {
     if (ev.endAt && new Date(ev.endAt) < now) return false; // skončené
-    if (!advMode && !_evIsActive(ev, now)) return false;     // v normálním: jen aktivní
+    if (!showPlanned && !_evIsActive(ev, now)) return false;
     return true;
   });
 
@@ -706,8 +707,10 @@ window._evToggleVisibility = function(visible) {
   // Přepni viditelnost polygonů na mapě
   if (visible) {
     EV.layer.addTo(EV.map);
+    if (_plannedLayer) _plannedLayer.addTo(EV.map);
   } else {
     EV.map.removeLayer(EV.layer);
+    if (_plannedLayer) EV.map.removeLayer(_plannedLayer);
   }
 };
 

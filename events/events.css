@@ -13,13 +13,20 @@
   top: calc(var(--hdr, 48px) + 8px);
   right: 54px;
   z-index: 1060;
-  width: 260px;
+  width: 220px;
   background: var(--surface, #161b27);
   border: 1px solid var(--border, #2a3352);
   border-radius: 12px;
   box-shadow: 0 8px 32px rgba(0,0,0,.45);
   overflow: hidden;
   font-family: 'DM Sans', sans-serif;
+  transition: width .28s ease, border-color .28s ease, box-shadow .28s ease, transform .24s ease;
+  transform-origin: top right;
+}
+#ev-draw-panel.ev-logged-in {
+  width: 300px;
+  border-color: rgba(124,58,237,.55);
+  box-shadow: 0 12px 40px rgba(99,102,241,.3);
 }
 
 .ev-panel-header {
@@ -54,7 +61,18 @@
 
 /* ── Kreslicí tlačítka ──────────────────────────────────────────── */
 .ev-draw-btns {
+  max-height: 0;
+  overflow: hidden;
+  opacity: 0;
+  padding: 0 10px;
+  margin-top: 0;
+  transition: max-height .35s ease, opacity .35s ease, padding .35s ease, margin .35s ease;
+}
+#ev-draw-panel.ev-logged-in .ev-draw-btns {
+  max-height: 500px;
+  opacity: 1;
   padding: 8px 10px 10px;
+  margin-top: 6px;
 }
 .ev-draw-hint {
   font-size: .67rem; color: var(--muted, #7c8aaa);
