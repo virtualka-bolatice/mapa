@@ -636,29 +636,38 @@ function renderMobSubcats() {
   const cat = CAT_CFG[ST.filterKey];
   if (!cat?.subs || Object.keys(cat.subs).length === 0) return;
 
-  // Spočítej POI v každé subkategorii aktivní kategorie
-  const subCounts = {};
-  ST.features
-    .filter(f => f.properties.kategorie === ST.filterKey)
-    .forEach(f => {
-      const s = f.properties.podkategorie;
-      if (s) subCounts[s] = (subCounts[s] || 0) + 1;
-    });
+  // Sbírej subs ze stejného zdroje jako desktop buildSubUI:
+  // config + všechny features dané kategorie (multi-sub)
+  const subsToShow = new Set(Object.keys(cat.subs));
+  ST.features.forEach(f => {
+    if (_poiKats(f.properties).includes(ST.filterKey)) {
+      _poiSubs(f.properties).forEach(s => { if (s) subsToShow.add(s); });
+    }
+  });
 
-  for (const [k, sub] of Object.entries(cat.subs)) {
-    // Přeskoč prázdné subkategorie
-    if (!subCounts[k]) continue;
-
+  for (const k of subsToShow) {
+    // Přeskoč složené klíče (obsahují čárku) — ty patří do _splitField, ne jako chip
+    if (k.includes(',')) continue;
+    // Najdi definici sub — buď v aktuální kategorii nebo v jiné (multi-sub)
+    let sub = cat.subs[k];
+    if (!sub) {
+      for (const c of Object.values(CAT_CFG)) {
+        if (c.subs?.[k]) { sub = c.subs[k]; break; }
+      }
+    }
+    if (!sub) continue;
     if (ST.subActive[k] === undefined) ST.subActive[k] = true;
+
     const pill = document.createElement('span');
     pill.className   = 'mob-sub-pill' + (ST.subActive[k] ? ' active' : '');
-    pill.dataset.key = k;                           // pro sync
+    pill.dataset.key = k;
     pill.style.color = sub.color || cat.color;
     pill.innerHTML   = `<span class="mob-sub-pill-ico">${sub.icon}</span>${sub.label}`;
     pill.onclick     = () => toggleSub(k);
     el.appendChild(pill);
   }
 }
+
 
 // ── VÝSLEDKY ─────────────────────────────────────────────────────
 function renderResults() {
