@@ -142,6 +142,8 @@ function buildSubUI() {
 
     el.innerHTML = '';
     for (const k of subsToShow) {
+      // Přeskoč složené klíče (kadernictvi, kosmetika) — split je zajistí samostatně
+      if (k.includes(',')) continue;
       let sub = cat.subs[k];
       if (!sub) {
         for (const c of Object.values(CAT_CFG)) {
