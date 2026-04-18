@@ -2127,3 +2127,16 @@ body.nav-on #nav-pick-btn { display: none !important; }
 /* ── Screenshot button — vedle měřítka, desktop only ─────────────── */
 /* Screenshot button lives in fab-col — inherits .fab styles, no extra positioning needed */
 
+/* ── Stadia Maps labelsPane (z-index 450) ───────────────────────────
+   Rotuje s mapou (uvnitř leaflet-map-pane).
+   Nad IS DMVS overlayPane (400), pod popupPane (700).
+   img bez opacity/transform = žádný stacking context = z-index funguje. */
+.leaflet-labelsPane { pointer-events: none !important; }
+.leaflet-labelsPane img {
+  opacity: 1 !important;
+  transform: none !important;
+  will-change: unset !important;
+}
+/* popupPane: isolation:isolate = vlastní stacking context, vždy navrchu */
+.leaflet-popup-pane { isolation: isolate; z-index: 700 !important; }
+

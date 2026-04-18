@@ -88,9 +88,10 @@ function msrDraw() {
     mPolygonLayer = L.polygon(mPts, {
       color: '#7c3aed', weight: 2, dashArray: null,
       fillColor: '#f97316', fillOpacity: .18,
+      pane: 'measurePane',
     }).addTo(map);
   } else if (mPts.length > 1) {
-    mPolyline = L.polyline(mPts, { color: '#7c3aed', weight: 2, dashArray: '5,4', opacity: .9 }).addTo(map);
+    mPolyline = L.polyline(mPts, { color: '#7c3aed', weight: 2, dashArray: '5,4', opacity: .9, pane: 'measurePane' }).addTo(map);
   }
 }
 
@@ -106,7 +107,7 @@ function mClick(e) {
 
   mPts.push(e.latlng);
   mDots.push(
-    L.circleMarker(e.latlng, { radius: 4, color: '#7c3aed', fillColor: '#7c3aed', fillOpacity: 1, weight: 2 }).addTo(map)
+    L.circleMarker(e.latlng, { radius: 4, color: '#7c3aed', fillColor: '#7c3aed', fillOpacity: 1, weight: 2, pane: 'measurePane' }).addTo(map)
   );
   msrDraw();
   msrUpdate();

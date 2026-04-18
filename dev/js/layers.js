@@ -258,7 +258,7 @@ function initQGISLayers() {
           const hasData = Object.values(props).some(v => v !== null && v !== '');
 
           // Formátovaný popup + async adresa/odkaz
-          layer.bindPopup(() => buildingPopup(feature, cfg), { maxWidth: 280 });
+          layer.bindPopup(() => buildingPopup(feature, cfg), { maxWidth: 280, pane: 'popupPane' });
           layer.on('popupopen', () => {
             const el = layer.getPopup()?.getElement();
             if (el) _enrichBuildingPopup(el);

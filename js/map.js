@@ -64,10 +64,43 @@ if (_rotatePlugin && map.keyboard) map.keyboard.enable();
 
 
 
-// ── Navigační pane — nad tiles (400) i overlayPane, viditelná vždy ─
+// ── HIERARCHIE VRSTEV (PANES) ────────────────────────────────────
+// Leaflet výchozí panes (v pořadí z-index):
+//   tilePane(200) < overlayPane(400) < shadowPane(500) < markerPane(600) < popupPane(700)
+//
+// Naše vrstvení:
+//   IS DMVS polygony = overlayPane (400)
+//   Stadia Maps popisky = shadowPane (500) — rotuje s mapou, nad IS DMVS, pod popupy
+//   Navigace = navPane (550) — mezi shadowPane a markerPane
+//   Měření = measurePane (650) — nad markery, pod popupy
+//   Popupy = popupPane (700) — vždy navrchu
+//
+// shadowPane je vestavěný Leaflet pane — leaflet-rotate ho rotuje automaticky.
+// Tile layer v shadowPane rotuje správně bez hacků.
+
+map.getPane('overlayPane').style.zIndex = '400';
+map.getPane('popupPane').style.zIndex   = '700';
+
+// labelsPane: custom pane uvnitř leaflet-map-pane → rotuje s mapou (leaflet-rotate)
+// z-index 450: nad overlayPane(400), pod markerPane(600) a popupPane(700)
+map.createPane('labelsPane');
+const _labelsEl  = map.getPane('labelsPane');
+const _overlayEl = map.getPane('overlayPane');
+// Přesuň labelsPane do stejného containeru jako overlayPane (leaflet-rotate-pane)
+// aby rotoval s mapou stejně jako ostatní vrstvy
+if (_overlayEl && _overlayEl.parentNode) {
+  _overlayEl.parentNode.appendChild(_labelsEl);
+}
+_labelsEl.style.zIndex = '450';
+_labelsEl.style.pointerEvents = 'none';
+
 map.createPane('navPane');
-map.getPane('navPane').style.zIndex = '450';
-map.getPane('navPane').style.pointerEvents = 'none'; // kliknutí prochází přes trasu
+map.getPane('navPane').style.zIndex = '500';
+map.getPane('navPane').style.pointerEvents = 'none';
+
+map.createPane('measurePane');
+map.getPane('measurePane').style.zIndex = '650';
+// ─────────────────────────────────────────────────────────────────
 
 // ── Bearing sync — pro _syncNorthBtn v nav.js ────────────────────
 // leaflet-rotate plugin zajistí rotaci markerPane; POI markery mají
@@ -128,9 +161,8 @@ const ORTO_LABELS = L.tileLayer(
   {
     attribution: '© Stamen Design, © OpenStreetMap, © Stadia Maps',
     maxZoom: 20, minZoom: 8,
-    opacity: 0.85,
     crossOrigin: 'anonymous',
-    zIndex: 200,
+    pane: 'labelsPane',  // 450: nad IS DMVS (400), pod popupy (700), rotuje s mapou
   }
  );
 
