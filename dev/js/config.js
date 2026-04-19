@@ -132,7 +132,7 @@ const CAT_CFG = {
     specialista: { label:'Specialista',     icon:'🩺',   color:'#0ea5e9' },
     veterina:    { label:'Veterinář',       icon:'🐾',   color:'#84cc16' },
   }},
-  sport:  { label:'Sport & volný čas', color:'#10b981', icon:'⚽', subs:{
+  sport:  { label:'Volný čas', color:'#10b981', icon:'🎳', subs:{
     sport_ven: { label:'Venkovní sport', icon:'⚽', color:'#10b981' },
     sport_hal: { label:'Hala',           icon:'🏋️', color:'#059669' },
     posilovna: { label:'Posilovna', icon:'🏋️', color:'#f97316' },

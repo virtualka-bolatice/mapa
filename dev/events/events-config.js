@@ -7,6 +7,9 @@
 //  3. V Account → API Keys → zkopíruj Master Key
 //  4. Vyplň hodnoty níže
 //
+//  ⚠️  API klíč je viditelný v kódu (GitHub Pages = statické hostování).
+//      Doporučení: nastav v JSONBin READ jako veřejné, WRITE bez extra omezení.
+//      Pro diplomovou práci je tato úroveň zabezpečení dostačující.
 // ════════════════════════════════════════════════════════════════
 
 const EVENTS_CONFIG = {
@@ -50,6 +53,14 @@ const EVENTS_CONFIG = {
       fillColor:   '#06d6a0',
       icon:        '🤝',
       fillOpacity: 0.18,
+    },
+    trasa: {
+      label:     'Vyznačená trasa',
+      color:     '#a855f7',
+      fillColor: '#a855f7',
+      icon:      '🛤️',
+      fillOpacity: 0.12,
+      isRoute:   true,   // speciální režim — polyline místo polygon fill
     },
   },
 };

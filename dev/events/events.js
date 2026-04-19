@@ -116,22 +116,65 @@ function _addPolygonLayer(ev) {
   const cfg = EVENTS_CONFIG.EVENT_TYPES[ev.type] || EVENTS_CONFIG.EVENT_TYPES.udrzba;
   const latlngs = ev.coords.map(c => [c[0], c[1]]);
 
-  const poly = L.polygon(latlngs, {
-    color:       cfg.color,
-    weight:      2.5,
-    fillColor:   cfg.fillColor,
-    fillOpacity: cfg.fillOpacity,
-    dashArray:   ev.type === 'udrzba' ? '6,4' : null,
-    interactive: true,
-    eventId:     ev.id,
-  });
+  let layer;
+  if (cfg.isRoute) {
+    // Trasa: tři vrstvy pro impozantní vzhled
+    // 1. Bílý obrys (halo)
+    const halo = L.polyline(latlngs, {
+      color: 'rgba(255,255,255,0.5)', weight: 10, lineCap: 'round', lineJoin: 'round',
+      interactive: false,
+    });
+    EV.layer.addLayer(halo);
+    // 2. Barevná čára
+    const line = L.polyline(latlngs, {
+      color: cfg.color, weight: 6, lineCap: 'round', lineJoin: 'round',
+      interactive: false,
+    });
+    EV.layer.addLayer(line);
+    // 3. Animovaná přerušovaná čára (pohyb) — klikatelná
+    layer = L.polyline(latlngs, {
+      color: 'rgba(255,255,255,0.85)', weight: 3, lineCap: 'round',
+      dashArray: '8, 12', className: 'ev-route-anim',
+      interactive: true,
+    });
+    // Šipky na trase (pokud plugin dostupný)
+    if (typeof L.polylineDecorator === 'function') {
+      const arrows = L.polylineDecorator(line, {
+        patterns: [{ offset: '10%', repeat: '18%',
+          symbol: L.Symbol.arrowHead({ pixelSize: 10, polygon: false,
+            pathOptions: { color: '#fff', fillOpacity: 1, weight: 2 } }) }]
+      });
+      EV.layer.addLayer(arrows);
+    }
+  } else {
+    layer = L.polygon(latlngs, {
+      color:       cfg.color,
+      weight:      2.5,
+      fillColor:   cfg.fillColor,
+      fillOpacity: cfg.fillOpacity,
+      dashArray:   ev.type === 'udrzba' ? '6,4' : null,
+      interactive: true,
+    });
+  }
 
-  poly.on('click', (e) => {
+  // Hover tooltip — minimalistický, jen název + typ
+  const ttip = L.tooltip({
+    permanent: false,
+    direction:  'top',
+    offset:     [0, -8],
+    opacity:    0.92,
+    className:  'ev-tooltip',
+  }).setContent(
+    '<span class="ev-tt-icon">' + cfg.icon + '</span>' +
+    '<span class="ev-tt-title">' + _esc(ev.title) + '</span>'
+  );
+  layer.bindTooltip(ttip);
+
+  layer.on('click', (e) => {
     L.DomEvent.stopPropagation(e);
-    _openEventPopup(ev, poly);
+    _openEventPopup(ev, layer);
   });
-
-  EV.layer.addLayer(poly);
+  EV.layer.addLayer(layer);
 }
 
 function _openEventPopup(ev, poly) {
@@ -194,8 +237,10 @@ function _startDrawing(type) {
 
   const panel = document.getElementById('ev-draw-panel');
   if (panel) {
-    panel.querySelector('.ev-draw-hint').textContent =
-      `Kreslíš: ${EVENTS_CONFIG.EVENT_TYPES[type]?.label} — klikej body, Enter = dokončit, Esc = zrušit`;
+    const cfg_ = EVENTS_CONFIG.EVENT_TYPES[type];
+    panel.querySelector('.ev-draw-hint').textContent = cfg_?.isRoute
+      ? `Trasuj: ${cfg_?.label} — klikej body trasy, Enter = dokončit, Esc = zrušit`
+      : `Kreslíš: ${cfg_?.label} — klikej body plochy, Enter = dokončit, Esc = zrušit`;
     panel.classList.add('ev-drawing');
   }
 }

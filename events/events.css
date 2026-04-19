@@ -667,3 +667,50 @@
   body.adv-on .sb-sec-l * { display: none !important; }
   body.adv-on #poi-cats-sec { display: none !important; }
 }
+
+/* ── Animovaná trasa ─────────────────────────────────────────────── */
+.ev-route-anim {
+  animation: evRouteDash 2s linear infinite;
+}
+@keyframes evRouteDash {
+  to { stroke-dashoffset: -40; }
+}
+.ev-type-btn[data-type="trasa"] {
+  background: linear-gradient(135deg,
+    color-mix(in srgb, #a855f7 12%, transparent),
+    color-mix(in srgb, #3b82f6 8%, transparent));
+}
+
+/* ── Event hover tooltip ─────────────────────────────────────────── */
+.ev-tooltip.leaflet-tooltip {
+  background: rgba(15, 23, 42, 0.88) !important;
+  border: 1px solid rgba(255,255,255,.1) !important;
+  border-radius: 8px !important;
+  padding: 5px 10px !important;
+  box-shadow: 0 4px 16px rgba(0,0,0,.4) !important;
+  backdrop-filter: blur(6px);
+  display: flex; align-items: center; gap: 6px;
+  white-space: nowrap;
+  pointer-events: none;
+  transition: opacity .15s ease !important;
+}
+.ev-tooltip.leaflet-tooltip::before { display: none !important; }
+.ev-tt-icon { font-size: .9rem; line-height: 1; }
+.ev-tt-title {
+  font-size: .72rem; font-weight: 600;
+  color: #f1f5f9; font-family: 'DM Sans', sans-serif;
+  letter-spacing: -.1px;
+}
+
+/* ── Popup šířka — content určuje šířku, wrapper se přizpůsobí ───── */
+.ev-popup-wrap .leaflet-popup-content-wrapper {
+  min-width: 220px !important;
+  width: max-content !important;
+  max-width: 300px !important;
+}
+.ev-popup-wrap .leaflet-popup-content {
+  margin: 0 !important;
+  width: 100% !important;
+}
+.ev-popup { min-width: 200px; }
+
