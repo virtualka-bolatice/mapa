@@ -1726,7 +1726,7 @@ body.nav-on #nav-pick-btn { display: none !important; }
 .geo-popup .leaflet-popup-content {
   margin: 0 !important;
   width: auto !important;
-  min-width: 175px !important;
+  min-width: 172px !important;
   max-width: 260px !important;
   white-space: nowrap !important;
 }
