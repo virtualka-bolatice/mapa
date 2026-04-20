@@ -474,28 +474,31 @@ async function mapScreenshot() {
 })();
 
 // ── WATERMARK PRELOADER ───────────────────────────────────────────
-// Načte logo jednou při startu a uloží do offscreen canvasu.
-// drawImage z canvasu nikdy netaintuje hlavní canvas.
 let _wmCanvas = null;
 (function _preloadWatermark() {
   const img = new Image();
   img.onload = () => {
+    const dpr = window.devicePixelRatio || 1;
     const h = 30, scale = h / img.naturalHeight, w = img.naturalWidth * scale;
     const c = document.createElement('canvas');
-    c.width  = Math.ceil(w * (window.devicePixelRatio || 1));
-    c.height = Math.ceil(h * (window.devicePixelRatio || 1));
-    const x  = c.getContext('2d');
-    x.scale(window.devicePixelRatio || 1, window.devicePixelRatio || 1);
+    c.width  = Math.ceil(w * dpr);
+    c.height = Math.ceil(h * dpr);
+    const x = c.getContext('2d');
+    x.scale(dpr, dpr);
     x.globalAlpha = 0.82;
     x.shadowColor = 'rgba(0,0,0,.55)';
     x.shadowBlur  = 3;
     x.drawImage(img, 0, 0, w, h);
     _wmCanvas = c;
   };
-  // Načti přes fetch → blob URL (same-origin, bez CORS tainting)
+  img.onerror = e => console.info('[watermark] logo nedostupné:', e);
+  // PNG načtení — funguje na GitHub Pages (same-origin = žádný CORS taint)
+  img.src = 'css/ikonky/watermark.png';
+  /* ZÁLOHA: Pokud by PNG nešlo, odkomentuj fetch variantu:
   fetch('css/ikonky/watermark.png')
     .then(r => r.ok ? r.blob() : Promise.reject(new Error('HTTP ' + r.status)))
     .then(blob => { img.src = URL.createObjectURL(blob); })
-    .catch(err => { console.info('[watermark] logo nedostupné:', err.message); });
+    .catch(err => console.info('[watermark] fetch selhalo:', err.message));
+  */
 })();
 

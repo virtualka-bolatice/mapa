@@ -170,8 +170,20 @@ function _addPolygonLayer(ev) {
   );
   layer.bindTooltip(ttip);
 
+  // Pro trasu: přidej neviditelnou širší vrstvu pro snadnější kliknutí
+  if (cfg.isRoute) {
+    const hitLayer = L.polyline(latlngs, {
+      color: 'transparent', weight: 20, interactive: true, opacity: 0,
+    });
+    hitLayer.on('click', (e) => { L.DomEvent.stopPropagation(e); _openEventPopup(ev, layer); });
+    hitLayer.on('mouseover', () => layer.fire('mouseover'));
+    hitLayer.on('mouseout',  () => layer.fire('mouseout'));
+    EV.layer.addLayer(hitLayer);
+  }
+
   layer.on('click', (e) => {
     L.DomEvent.stopPropagation(e);
+    layer.closeTooltip();        // skryj hover tooltip při otevření popupu
     _openEventPopup(ev, layer);
   });
   EV.layer.addLayer(layer);

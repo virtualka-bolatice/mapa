@@ -118,21 +118,21 @@ const DMVS_LAYERS = [
 //  Pole `foto` v GeoJSON odkazuje na soubor relativní k index.html.
 //
 const CAT_CFG = {
-  gastro: { label:'Gastronomie',       color:'#f97316', icon:'🍽️', subs:{
+  gastro: { label:'Gastronomie',       mobLabel:'Jídlo', color:'#f97316', icon:'🍽️', subs:{
     restaurace: { label:'Restaurace', icon:'🍽️', color:'#fb923c' },
     hospoda:    { label:'Hospoda',    icon:'🍺', color:'#f97316' },
     kavarna:    { label:'Kavárna',    icon:'☕', color:'#d97706' },
     pizzeria:   { label:'Pizzeria',   icon:'🍕', color:'#ef4444' },
     fast_food:  { label:'Fast food',  icon:'🍔', color:'#fbbf24' },
   }},
-  zdravi: { label:'Zdravotnictví',     color:'#06b6d4', icon:'🏥', subs:{
+  zdravi: { label:'Zdravotnictví',     mobLabel:'Zdraví', color:'#06b6d4', icon:'🏥', subs:{
     lekar:       { label:'Praktický lékař', icon:'👨‍⚕️', color:'#06b6d4' },
     zubar:       { label:'Zubař',           icon:'🦷',   color:'#22d3ee' },
     lekarna:     { label:'Lékárna',         icon:'💊',   color:'#67e8f9' },
     specialista: { label:'Specialista',     icon:'🩺',   color:'#0ea5e9' },
     veterina:    { label:'Veterinář',       icon:'🐾',   color:'#84cc16' },
   }},
-  sport:  { label:'Volný čas', color:'#10b981', icon:'🎳', subs:{
+  sport:  { label:'Sport & volný čas', mobLabel:'Volný čas', color:'#10b981', icon:'⚽', subs:{
     sport_ven: { label:'Venkovní sport', icon:'⚽', color:'#10b981' },
     sport_hal: { label:'Hala',           icon:'🏋️', color:'#059669' },
     posilovna: { label:'Posilovna', icon:'🏋️', color:'#f97316' },
@@ -141,7 +141,7 @@ const CAT_CFG = {
     bar:        { label:'Bar & koktejly',  icon:'🍸', color:'#a855f7' },
     motocross: { label:'Motocross', icon:'🏍️', color:'#ef4444' },
   }},
-  urad:   { label:'Úřady & instituce', color:'#3b82f6', icon:'🏛️', subs:{
+  urad:   { label:'Úřady & instituce', mobLabel:'Úřady', color:'#3b82f6', icon:'🏛️', subs:{
     urad_obec: { label:'Obecní úřad', icon:'🏛️', color:'#3b82f6' },
     skola:     { label:'Škola',       icon:'🏫', color:'#60a5fa' },
     cirkev:    { label:'Kostel',      icon:'⛪', color:'#93c5fd' },
@@ -151,9 +151,6 @@ const CAT_CFG = {
   obchod: { label:'Obchody',           color:'#f59e0b', icon:'🛒', subs:{
     potraviny: { label:'Potraviny', icon:'🛒', color:'#f59e0b' },
     smisene:   { label:'Smíšené',  icon:'🏪', color:'#fbbf24' },
-    elektro: { label:'Elektro', icon:'💻', color:'#d946ef' },
-    zahradnictvi: { label:'Zahradnictví', icon:'🌱', color:'#16a34a' },
-    stavebniny: { label:'Stavebniny', icon:'🏗️', color:'#f59e0b' },
   }},
   sluzby: { label:'Služby',            color:'#8b5cf6', icon:'🔧', subs:{
     kadernictvi: { label:'Kadeřnictví', icon:'✂️', color:'#a78bfa' },
@@ -162,9 +159,9 @@ const CAT_CFG = {
     finance:     { label:'Banka',       icon:'🏦', color:'#60a5fa' },
     ubytovani:   { label:'Ubytování',   icon:'🏨', color:'#34d399' },
     socialni: { label:'Sociální služby', icon:'🤝', color:'#a78bfa' },
-    zlatnictvi: { label:'Zlatnictví', icon:'💍', color:'#fbbf24' },
+    elektro: { label:'Elektro', icon:'💻', color:'#d946ef' },
+    stavebniny: { label:'Stavebniny', icon:'🏗️', color:'#f59e0b' },
     doprava: { label:'Doprava', icon:'🚉', color:'#0ea5e9' },
-    sklad: { label:'Sklad', icon:'📦', color:'#64748b' },
     ostatni:     { label:'Ostatní',     icon:'⚙️', color:'#94a3b8' },
   }},
 };

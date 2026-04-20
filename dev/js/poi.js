@@ -617,7 +617,7 @@ function renderMobCatIcons(counts) {
                  data-cat="${k}" style="--cat-color:${cat.color}"
                  onclick="toggleCat('${k}')">
       <div class="mob-cat-bubble">${cat.icon}</div>
-      <div class="mob-cat-lbl">${cat.label.split(/[ &]/)[0]}</div>
+      <div class="mob-cat-lbl">${cat.mobLabel || cat.label.split(/[ &]/)[0]}</div>
       <div class="mob-cat-cnt">${c[k] ?? 0}</div>
     </div>`;
   }).join('');

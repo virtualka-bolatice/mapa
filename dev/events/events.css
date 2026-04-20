@@ -713,4 +713,9 @@
   width: 100% !important;
 }
 .ev-popup { min-width: 200px; }
+/* Skryj focus outline (selection box) na event vrstvách */
+.ev-popup-wrap path:focus,
+.leaflet-overlay-pane path:focus,
+.leaflet-overlay-pane polyline:focus { outline: none !important; }
+.leaflet-interactive:focus { outline: none !important; }
 
