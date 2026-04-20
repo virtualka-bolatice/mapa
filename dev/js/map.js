@@ -1,5 +1,14 @@
 'use strict';
 
+
+// ── KONFIGURACE WATERMARKU ────────────────────────────────────────
+// WATERMARK_MODE: 'text' = textový watermark (vždy funguje)
+//                 'png'  = logo ze css/ikonky/watermark.png
+//                          (GitHub Pages: same-origin, PNG načtení funguje)
+const WATERMARK_MODE = 'png';
+// Pro PNG: nastavit WATERMARK_MODE = 'png'
+// ─────────────────────────────────────────────────────────────────
+
 // ════════════════════════════════════════════════════════════════
 //  map.js — Inicializace Leaflet mapy a podkladových vrstev
 //
@@ -423,22 +432,19 @@ async function mapScreenshot() {
 
     const ctx = canvas.getContext('2d');
 
-    // Watermark — preloadovaný offscreen canvas (zero CORS tainting)
-    if (_wmCanvas) {
+    // Watermark — dle WATERMARK_MODE v konfiguraci
+    if (WATERMARK_MODE === 'png' && _wmCanvas) {
+      // PNG logo (vyžaduje crossOrigin a same-origin hosting)
       const pad = 10 * dpr;
-      ctx.drawImage(
-        _wmCanvas,
-        pad,
-        canvas.height - _wmCanvas.height - pad
-      );
-    }
-    // Fallback text pokud logo nebylo preloadováno
-    else {
+      ctx.drawImage(_wmCanvas, pad, canvas.height - _wmCanvas.height - pad);
+    } else {
+      // Textový watermark — vždy spolehlivý, neovlivňuje canvas taint
       ctx.font = 'bold ' + (11 * dpr) + 'px "DM Sans", sans-serif';
       ctx.fillStyle = 'rgba(255,255,255,.82)';
-      ctx.shadowColor = 'rgba(0,0,0,.6)'; ctx.shadowBlur = 3 * dpr;
+      ctx.shadowColor = 'rgba(0,0,0,.65)';
+      ctx.shadowBlur  = 3 * dpr;
       ctx.fillText('Interaktivní mapa Bolatic', 8 * dpr, canvas.height - 8 * dpr);
-      ctx.shadowBlur = 0;
+      ctx.shadowBlur  = 0;
     }
 
     // Lokální datum (CET/CEST)
@@ -476,7 +482,10 @@ async function mapScreenshot() {
 // ── WATERMARK PRELOADER ───────────────────────────────────────────
 let _wmCanvas = null;
 (function _preloadWatermark() {
+  if (WATERMARK_MODE !== 'png') return; // textový mode nepotřebuje preload
+
   const img = new Image();
+  img.crossOrigin = 'anonymous'; // nutné pro canvas.toBlob bez CORS taintu
   img.onload = () => {
     const dpr = window.devicePixelRatio || 1;
     const h = 30, scale = h / img.naturalHeight, w = img.naturalWidth * scale;
@@ -490,15 +499,12 @@ let _wmCanvas = null;
     x.shadowBlur  = 3;
     x.drawImage(img, 0, 0, w, h);
     _wmCanvas = c;
+    console.info('[watermark] PNG logo načteno');
   };
-  img.onerror = e => console.info('[watermark] logo nedostupné:', e);
-  // PNG načtení — funguje na GitHub Pages (same-origin = žádný CORS taint)
+  img.onerror = () => {
+    console.info('[watermark] PNG nedostupné, použije se textový watermark');
+    _wmCanvas = null;
+  };
   img.src = 'css/ikonky/watermark.png';
-  /* ZÁLOHA: Pokud by PNG nešlo, odkomentuj fetch variantu:
-  fetch('css/ikonky/watermark.png')
-    .then(r => r.ok ? r.blob() : Promise.reject(new Error('HTTP ' + r.status)))
-    .then(blob => { img.src = URL.createObjectURL(blob); })
-    .catch(err => console.info('[watermark] fetch selhalo:', err.message));
-  */
 })();
 
