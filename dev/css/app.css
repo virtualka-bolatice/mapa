@@ -1726,7 +1726,7 @@ body.nav-on #nav-pick-btn { display: none !important; }
 .geo-popup .leaflet-popup-content {
   margin: 0 !important;
   width: auto !important;
-  min-width: 180px !important;  /* dost místa pro ±XX m badge */
+  min-width: 175px !important;
   max-width: 260px !important;
   white-space: nowrap !important;
 }
