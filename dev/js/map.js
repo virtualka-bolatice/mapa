@@ -1,5 +1,34 @@
 'use strict';
 
+// ── KONFIGURACE WATERMARKU ────────────────────────────────────────
+// WATERMARK_MODE: 'text' = textový watermark (vždy funguje)
+//                 'png'  = logo ze css/ikonky/watermark.png
+//                          (GitHub Pages: same-origin, PNG načtení funguje)
+const WATERMARK_MODE = 'text';
+// ─────────────────────────────────────────────────────────────────
+
+// PNG preloader — aktivní pouze při WATERMARK_MODE = 'png'
+let _wmCanvas = null;
+(function _preloadWatermark() {
+  if (WATERMARK_MODE !== 'png') return;
+  const img = new Image();
+  img.crossOrigin = 'anonymous';
+  img.onload = () => {
+    const dpr = window.devicePixelRatio || 1;
+    const h = 45, scale = h / img.naturalHeight, w = img.naturalWidth * scale;
+    const c = document.createElement('canvas');
+    c.width = Math.ceil(w * dpr); c.height = Math.ceil(h * dpr);
+    const x = c.getContext('2d');
+    x.scale(dpr, dpr);
+    x.globalAlpha = 0.88;
+    x.shadowColor = 'rgba(0,0,0,.5)'; x.shadowBlur = 3;
+    x.drawImage(img, 0, 0, w, h);
+    _wmCanvas = c;
+  };
+  img.onerror = () => console.info('[watermark] PNG nedostupné, použije se text');
+  img.src = 'css/ikonky/watermark.png';
+})();
+
 // ════════════════════════════════════════════════════════════════
 //  map.js — Inicializace Leaflet mapy a podkladových vrstev
 // ════════════════════════════════════════════════════════════════
@@ -409,7 +438,13 @@ async function mapScreenshot() {
     const ctx = canvas.getContext('2d');
 
     // 5. Watermark — text přímo na canvas
-    _drawWatermark(ctx, canvas.width, canvas.height, dpr);
+    // Watermark dle WATERMARK_MODE
+    if (WATERMARK_MODE === 'png' && _wmCanvas) {
+      const pad = 12 * dpr;
+      ctx.drawImage(_wmCanvas, pad, canvas.height - _wmCanvas.height - pad);
+    } else {
+      _drawWatermark(ctx, canvas.width, canvas.height, dpr);
+    }
 
     canvas.toBlob(blob => {
       const url = URL.createObjectURL(blob);

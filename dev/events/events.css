@@ -762,3 +762,21 @@
 }
 .ev-mob-bar-cancel:hover { background: rgba(239,68,68,.28); }
 
+/* Landscape mobile: ev-draw-panel kompaktní */
+@media (orientation: landscape) and (max-height: 560px) {
+  #ev-draw-panel {
+    top: 4px !important;
+    right: 4px !important;
+    width: 220px !important;
+    max-height: calc(100vh - 8px) !important;
+    overflow-y: auto !important;
+    border-radius: 10px !important;
+    font-size: .78rem !important;
+  }
+  #ev-draw-panel .ev-panel-header { padding: 6px 10px !important; }
+  #ev-draw-panel .ev-draw-btns { padding: 5px 8px 7px !important; }
+  #ev-draw-panel .ev-type-btn { padding: 5px 8px !important; font-size: .7rem !important; }
+  #ev-draw-panel .ev-auth-bar { padding: 5px 10px !important; }
+  #ev-sidebar-sec { display: none !important; } /* v landscape skrýt ev list */
+}
+

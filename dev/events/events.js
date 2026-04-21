@@ -240,6 +240,8 @@ window._evDeleteConfirm = function(id) {
 // ── KRESLENÍ ─────────────────────────────────────────────────────
 function _startDrawing(type) {
   if (!EV.loggedIn) return;
+  // Pokud probíhá kreslení, zruš ho nejdřív (odstraní body na mapě)
+  if (EV.drawing) _cancelDrawing();
   EV._pendingType = type;
   EV.drawing = true;
   EV.drawPts = [];
@@ -251,12 +253,20 @@ function _startDrawing(type) {
   if (panel) {
     const cfg_ = EVENTS_CONFIG.EVENT_TYPES[type];
     const isRoute_ = cfg_?.isRoute;
-    panel.querySelector('.ev-draw-hint').textContent = isRoute_
-      ? 'Trasuj: ' + (cfg_?.label || '') + ' — klikej body trasy, Enter = dokončit, Esc = zrušit'
-      : 'Kreslíš: ' + (cfg_?.label || '') + ' — klikej body plochy, Enter = dokončit, Esc = zrušit';
-    // Zobraz mobilní confirm lištu při kreslení
+    const isMob_ = window.innerWidth < 769 || 'ontouchstart' in window;
+    const hintEl = panel.querySelector('.ev-draw-hint');
+    if (isMob_) {
+      hintEl.textContent = isRoute_
+        ? 'Klikej body trasy → ✓ dokončit'
+        : 'Klikej body plochy → uzavři obrazec';
+    } else {
+      hintEl.textContent = isRoute_
+        ? 'Trasuj: ' + (cfg_?.label || '') + ' — klikej body, Enter = dokončit, Esc = zrušit'
+        : 'Kreslíš: ' + (cfg_?.label || '') + ' — klikej body, Enter = dokončit, Esc = zrušit';
+    }
+    // Mobilní confirm lišta — pouze pro trasu (polygon se uzavírá sám)
     const mBar = document.getElementById('ev-draw-mobile-bar');
-    if (mBar) mBar.style.display = '';
+    if (mBar) mBar.style.display = (isRoute_ && isMob_) ? 'flex' : 'none';
     panel.classList.add('ev-drawing');
   }
 }
