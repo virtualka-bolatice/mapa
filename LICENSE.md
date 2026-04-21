@@ -62,4 +62,4 @@ This license does not apply to third-party data included in the project:
 
 ---
 
-© 2024–2025 — Diplomová práce VŠB-TUO, obor Geodézie a kartografie
+© 2025–2026 — Diplomová práce VŠB-TUO, obor Geodézie a kartografie

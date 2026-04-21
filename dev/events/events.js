@@ -266,7 +266,13 @@ function _startDrawing(type) {
     }
     // Mobilní confirm lišta — pouze pro trasu (polygon se uzavírá sám)
     const mBar = document.getElementById('ev-draw-mobile-bar');
-    if (mBar) mBar.style.display = (isRoute_ && isMob_) ? 'flex' : 'none';
+    if (mBar) {
+      if (isRoute_ && isMob_) {
+        mBar.classList.add('ev-bar-visible');
+      } else {
+        mBar.classList.remove('ev-bar-visible');
+      }
+    }
     panel.classList.add('ev-drawing');
   }
 }
@@ -318,7 +324,7 @@ function _cleanupDraw() {
   document.getElementById('ev-draw-panel')?.classList.remove('ev-drawing');
   // Skryj mobilní confirm lištu
   const mBar = document.getElementById('ev-draw-mobile-bar');
-  if (mBar) mBar.style.display = 'none';
+  if (mBar) mBar.classList.remove('ev-bar-visible');
 }
 
 async function _finishDrawing() {

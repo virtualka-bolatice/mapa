@@ -486,10 +486,12 @@ document.addEventListener('click', () => {
 </script>
 
   <!-- Mobilní confirm lišta při kreslení události -->
-  <div id="ev-draw-mobile-bar" style="display:none;position:fixed;bottom:calc(env(safe-area-inset-bottom,0px)+12px);left:50%;transform:translateX(-50%);z-index:1200;display:none;gap:10px;background:rgba(15,23,42,.88);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:8px 14px;backdrop-filter:blur(8px);box-shadow:0 4px 20px rgba(0,0,0,.4);align-items:center;flex-wrap:nowrap">
-    <span class="ev-mob-bar-hint">Body trasy na mapě</span>
-    <button class="ev-mob-bar-btn ev-mob-bar-confirm" onclick="if(typeof _finishDrawing==='function')_finishDrawing()" title="Dokončit (Enter)">✓</button>
-    <button class="ev-mob-bar-btn ev-mob-bar-cancel"  onclick="if(typeof _cancelDrawing==='function')_cancelDrawing()" title="Zrušit (Esc)">✕</button>
+  <div id="ev-draw-mobile-bar">
+    <span class="ev-mob-bar-hint" id="ev-mob-bar-hint-txt">Klikej body trasy</span>
+    <div class="ev-mob-bar-sep"></div>
+    <button class="ev-mob-bar-btn ev-mob-bar-pts"><span id="ev-mob-pts-cnt">0</span> <span style="font-size:.6rem;opacity:.7">bodů</span></button>
+    <button class="ev-mob-bar-btn ev-mob-bar-confirm" onclick="if(typeof _finishDrawing==='function')_finishDrawing()" title="Dokončit">✓</button>
+    <button class="ev-mob-bar-btn ev-mob-bar-cancel"  onclick="if(typeof _cancelDrawing==='function')_cancelDrawing()"  title="Zrušit">✕</button>
   </div>
 </body>
 </html>
