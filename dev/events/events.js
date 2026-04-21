@@ -250,9 +250,13 @@ function _startDrawing(type) {
   const panel = document.getElementById('ev-draw-panel');
   if (panel) {
     const cfg_ = EVENTS_CONFIG.EVENT_TYPES[type];
-    panel.querySelector('.ev-draw-hint').textContent = cfg_?.isRoute
-      ? `Trasuj: ${cfg_?.label} — klikej body trasy, Enter = dokončit, Esc = zrušit`
-      : `Kreslíš: ${cfg_?.label} — klikej body plochy, Enter = dokončit, Esc = zrušit`;
+    const isRoute_ = cfg_?.isRoute;
+    panel.querySelector('.ev-draw-hint').textContent = isRoute_
+      ? 'Trasuj: ' + (cfg_?.label || '') + ' — klikej body trasy, Enter = dokončit, Esc = zrušit'
+      : 'Kreslíš: ' + (cfg_?.label || '') + ' — klikej body plochy, Enter = dokončit, Esc = zrušit';
+    // Zobraz mobilní confirm lištu při kreslení
+    const mBar = document.getElementById('ev-draw-mobile-bar');
+    if (mBar) mBar.style.display = '';
     panel.classList.add('ev-drawing');
   }
 }
@@ -302,6 +306,9 @@ function _cleanupDraw() {
   EV.drawDots.forEach(d => EV.map.removeLayer(d));
   EV.drawDots = [];
   document.getElementById('ev-draw-panel')?.classList.remove('ev-drawing');
+  // Skryj mobilní confirm lištu
+  const mBar = document.getElementById('ev-draw-mobile-bar');
+  if (mBar) mBar.style.display = 'none';
 }
 
 async function _finishDrawing() {

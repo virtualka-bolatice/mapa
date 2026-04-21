@@ -1,39 +1,12 @@
 'use strict';
 
-
-// ── KONFIGURACE WATERMARKU ────────────────────────────────────────
-// WATERMARK_MODE: 'text' = textový watermark (vždy funguje)
-//                 'png'  = logo ze css/ikonky/watermark.png
-//                          (GitHub Pages: same-origin, PNG načtení funguje)
-const WATERMARK_MODE = 'png';
-// Pro PNG: nastavit WATERMARK_MODE = 'png'
-// ─────────────────────────────────────────────────────────────────
-
 // ════════════════════════════════════════════════════════════════
 //  map.js — Inicializace Leaflet mapy a podkladových vrstev
-//
-//  Podkladové mapy:
-//    "Mapa"    = CartoDB Positron (světlý, minimalistický)
-//    "Ortofoto"= ČÚZK ORTOFOTO_WM, záloha Esri World Imagery
-//
-//  leaflet-rotate plugin: aktivuje se POUZE pokud CDN úspěšně načetl
-//    (detekce přes L.Map.prototype.getBearing).
-//    BEZ pluginu: touchRotate / 2-prsty rotace nejsou dostupné, ale
-//    vše ostatní (trasa, navigace, POI) funguje normálně.
 // ════════════════════════════════════════════════════════════════
 
-// ── CRS ──────────────────────────────────────────────────────────
-// Standardní Web Mercator — kompatibilní se všemi dlaždicovými službami
-// (CartoDB, ČÚZK, Esri). Vlastní L.Proj.CRS způsoboval záporné souřadnice dlaždic.
 const mapCRS = L.CRS.EPSG3857;
+const _rotatePlugin = (typeof L !== 'undefined') && (typeof L.Map.prototype.getBearing === 'function');
 
-// ── Detekce leaflet-rotate pluginu ───────────────────────────────
-// Plugin přidává setBearing/getBearing na L.Map.prototype.
-// Kontrola se provede SYNCHRONNĚ po načtení CDN <script> tagu.
-const _rotatePlugin = (typeof L !== 'undefined') &&
-                      (typeof L.Map.prototype.getBearing === 'function');
-
-// ── MAPA ─────────────────────────────────────────────────────────
 const map = L.map('map', {
   crs:          mapCRS,
   center:       [49.956, 18.078],
@@ -41,20 +14,17 @@ const map = L.map('map', {
   zoomControl:  false,
   maxZoom:      20,
   minZoom:      8,
-  // leaflet-rotate options — pouze pokud plugin načtený:
   ...(_rotatePlugin ? {
     rotate:          true,
     bearing:         0,
-    touchRotate:     true,    // 2 prsty na mobilu = rotace + zoom
-    shiftKeyRotate:  true,    // Shift + scroll kolečko = rotace na desktopu
+    touchRotate:     true,
+    shiftKeyRotate:  true,
   } : {}),
 });
 
 L.control.zoom ({ position: 'bottomright' }).addTo(map);
 L.control.scale({ position: 'bottomleft', imperial: false, metric: true }).addTo(map);
-// ── DVOJITÉ KLIKNUTÍ — zoom in; na mobilu long-press-dblclick = zoom out ──
-// Desktop: dblclick = +1, (Ctrl/Alt)+dblclick = -1
-// Mobil: standard dblclick = +1; pro oddálení použij pinch nebo zoom tlačítka
+
 map.on('dblclick', (e) => {
   if (typeof msrOn !== 'undefined' && msrOn) return;
   e.originalEvent.preventDefault();
@@ -63,71 +33,34 @@ map.on('dblclick', (e) => {
   map.setZoomAround(e.containerPoint, z + (zout ? -1 : 1), { animate: true, duration: 0.3 });
 });
 map.doubleClickZoom.disable();
-
-
-// ── DESKTOP WHEEL OPRAVY ─────────────────────────────────────────
-// scrollWheelZoom a Shift+wheel rotace musí být explicitně povoleny.
-// leaflet-rotate přebírá wheel event pro Shift+rotate, běžný wheel jde na zoom.
 map.scrollWheelZoom.enable();
 if (_rotatePlugin && map.keyboard) map.keyboard.enable();
 
-
-
-// ── HIERARCHIE VRSTEV (PANES) ────────────────────────────────────
-// Leaflet výchozí panes (v pořadí z-index):
-//   tilePane(200) < overlayPane(400) < shadowPane(500) < markerPane(600) < popupPane(700)
-//
-// Naše vrstvení:
-//   IS DMVS polygony = overlayPane (400)
-//   Stadia Maps popisky = shadowPane (500) — rotuje s mapou, nad IS DMVS, pod popupy
-//   Navigace = navPane (550) — mezi shadowPane a markerPane
-//   Měření = measurePane (650) — nad markery, pod popupy
-//   Popupy = popupPane (700) — vždy navrchu
-//
-// shadowPane je vestavěný Leaflet pane — leaflet-rotate ho rotuje automaticky.
-// Tile layer v shadowPane rotuje správně bez hacků.
-
-map.getPane('overlayPane').style.zIndex = '400';
-map.getPane('popupPane').style.zIndex   = '700';
-
-// labelsPane: custom pane uvnitř leaflet-map-pane → rotuje s mapou (leaflet-rotate)
-// z-index 450: nad overlayPane(400), pod markerPane(600) a popupPane(700)
+// ── HIERARCHIE VRSTEV A ROTACE ──────────────────────────────────
+// Vytvoření labelsPane a jeho přesun do rotate-pane pro identickou rotaci
 map.createPane('labelsPane');
-const _labelsEl  = map.getPane('labelsPane');
-const _overlayEl = map.getPane('overlayPane');
-// Přesuň labelsPane do stejného containeru jako overlayPane (leaflet-rotate-pane)
-// aby rotoval s mapou stejně jako ostatní vrstvy
-if (_overlayEl && _overlayEl.parentNode) {
-  _overlayEl.parentNode.appendChild(_labelsEl);
+const labelsPane = map.getPane('labelsPane');
+labelsPane.style.zIndex = '450'; // Nad fialovou vrstvou (400)
+labelsPane.style.pointerEvents = 'none';
+
+// Oprava rotace — přesun labelsPane do stejného rodiče jako overlayPane
+const overlayPane = map.getPane('overlayPane');
+if (overlayPane && overlayPane.parentNode) {
+  overlayPane.parentNode.appendChild(labelsPane);
 }
-_labelsEl.style.zIndex = '450';
-_labelsEl.style.pointerEvents = 'none';
 
 map.createPane('navPane');
-map.getPane('navPane').style.zIndex = '500';
+map.getPane('navPane').style.zIndex = '460';
 map.getPane('navPane').style.pointerEvents = 'none';
 
-map.createPane('measurePane');
-const _measureEl = map.getPane('measurePane');
-// Přesuň do rotate-pane (stejný container jako overlayPane) → rotuje + viditelné
-if (_overlayEl && _overlayEl.parentNode) {
-  _overlayEl.parentNode.appendChild(_measureEl);
-}
-_measureEl.style.zIndex = '650';
-// ─────────────────────────────────────────────────────────────────
+map.getPane('markerPane').style.zIndex = '600';
+map.getPane('popupPane').style.zIndex = '700';
 
-// ── Bearing sync — pro _syncNorthBtn v nav.js ────────────────────
-// leaflet-rotate plugin zajistí rotaci markerPane; POI markery mají
-// rotateWithView:false takže se neotáčí automaticky.
-// Nav marker rotujeme ručně přes heading.
-// Proměnná _mapBearing udržuje aktuální bearing pro případné použití.
 let _mapBearing = 0;
-
 function _onMapRotate() {
   _mapBearing = (typeof map.getBearing === 'function') ? (map.getBearing() || 0) : 0;
 }
 _onMapRotate();
-
 if (_rotatePlugin) {
   map.on('rotate',    _onMapRotate);
   map.on('rotateend', _onMapRotate);
@@ -139,162 +72,101 @@ const ORTO_URL = 'https://ags.cuzk.cz/arcgis1/rest/services/ORTOFOTO_WM/MapServe
 const TILES = {
   mapa: L.tileLayer(
     'https://{s}.basemaps.cartocdn.com/rastertiles/voyager_labels_under/{z}/{x}/{y}{r}.png',
-    {
-      attribution: '© OpenStreetMap © CARTO',
-      subdomains: 'abcd',
-      maxZoom: 20,
-      minZoom: 8,
-      crossOrigin: 'anonymous'
-    }
+    { attribution: '© OpenStreetMap © CARTO', subdomains: 'abcd', maxZoom: 20, minZoom: 8, crossOrigin: 'anonymous' }
   ),
   orto: L.tileLayer(
     ORTO_URL,
     {
       attribution: '© <a href="https://www.cuzk.cz" target="_blank" rel="noopener">ČÚZK</a> Ortofotomapa ČR',
-      maxZoom: 20,
-      minZoom: 8,
-      crossOrigin: 'anonymous'
+      maxZoom: 20, minZoom: 8, crossOrigin: 'anonymous'
     }
   ),
 };
 
 const ORTO_FALLBACK = L.tileLayer(
   'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-  {
-    attribution: '© Esri World Imagery (záloha)',
-    maxZoom: 20,
-    minZoom: 8,
-    crossOrigin: 'anonymous'
-  }
+  { attribution: '© Esri World Imagery (záloha)', maxZoom: 20, minZoom: 8, crossOrigin: 'anonymous' }
 );
 
 // Popisky ulic + čísla budov nad ortofoto
-// Stamen Toner Labels — černý text, bílý obrys, průhledné pozadí = max čitelnost nad ortofotem
 const ORTO_LABELS = L.tileLayer(
   'https://tiles.stadiamaps.com/tiles/stamen_toner_labels/{z}/{x}/{y}{r}.png?api_key=94a324d5-95c3-4059-9bbf-abce14f4b362',
   {
     attribution: '© Stamen Design, © OpenStreetMap, © Stadia Maps',
     maxZoom: 20, minZoom: 8,
+    opacity: 0.85,
     crossOrigin: 'anonymous',
-    pane: 'labelsPane',  // 450: nad IS DMVS (400), pod popupy (700), rotuje s mapou
+    pane: 'labelsPane'
   }
- );
-
+);
 
 let activeTile = 'mapa';
 let ortoFallbackActive = false;
-
-// řízení tichého obnovování
 let ortoRestoreTimer = null;
-let ortoRetryDelay = 12000;   // start: 12 s
-let ortoProbeBusy = false;    // proti duplicitním probe requestům
-const ORTO_RETRY_MAX = 60000; // max: 60 s
+let ortoRetryDelay = 12000;
+let ortoProbeBusy = false;
+const ORTO_RETRY_MAX = 60000;
 
 TILES.orto.on('tileerror', () => {
   if (activeTile !== 'orto' || ortoFallbackActive) return;
-
   console.warn('ČÚZK ortofoto nedostupné, přepínám na Esri zálohu');
   ortoFallbackActive = true;
-
   map.removeLayer(TILES.orto);
   ORTO_FALLBACK.addTo(map);
-  badge('⚠️ ČÚZK ortofoto nedostupné — záloha Esri');
-
-  if (ortoRestoreTimer) {
-    clearTimeout(ortoRestoreTimer);
-    ortoRestoreTimer = null;
-  }
-
+  if (typeof badge === 'function') badge('⚠️ ČÚZK ortofoto nedostupné — záloha Esri');
   const scheduleRestoreProbe = () => {
-    if (!ortoFallbackActive || activeTile !== 'orto') return;
-    if (ortoRestoreTimer || ortoProbeBusy) return;
-
+    if (!ortoFallbackActive || activeTile !== 'orto' || ortoRestoreTimer || ortoProbeBusy) return;
     ortoRestoreTimer = setTimeout(() => {
       ortoRestoreTimer = null;
       if (!ortoFallbackActive || activeTile !== 'orto' || ortoProbeBusy) return;
-
       ortoProbeBusy = true;
-
       const z = Math.max(map.getZoom(), 8);
       const p = map.project(map.getCenter(), z).divideBy(256).floor();
-      const probeUrl = ORTO_URL
-        .replace('{z}', z)
-        .replace('{x}', p.x)
-        .replace('{y}', p.y);
-
-      // tichý probe bez zásahu do UI
+      const probeUrl = ORTO_URL.replace('{z}', z).replace('{x}', p.x).replace('{y}', p.y);
       const probe = new Image();
       probe.onload = () => {
         ortoProbeBusy = false;
         if (!ortoFallbackActive || activeTile !== 'orto') return;
-
-        if (ortoRestoreTimer) {
-          clearTimeout(ortoRestoreTimer);
-          ortoRestoreTimer = null;
-        }
-
         map.removeLayer(ORTO_FALLBACK);
         TILES.orto.addTo(map);
         ortoFallbackActive = false;
         ortoRetryDelay = 12000;
-
-        badge('✅ ČÚZK ortofoto obnoveno');
-        qgisLayers.forEach(l => { if (l.visible && l.leaflet) l.leaflet.bringToFront(); });
-        poiGroup.bringToFront();
+        if (typeof badge === 'function') badge('✅ ČÚZK ortofoto obnoveno');
+        if (typeof qgisLayers !== 'undefined') qgisLayers.forEach(l => { if (l.visible && l.leaflet) l.leaflet.bringToFront(); });
+        if (typeof poiGroup !== 'undefined') poiGroup.bringToFront();
       };
-
       probe.onerror = () => {
         ortoProbeBusy = false;
-        if (!ortoFallbackActive || activeTile !== 'orto') return;
-
-        // adaptivní zpomalení, aby se síť zbytečně netahala
         ortoRetryDelay = Math.min(Math.round(ortoRetryDelay * 1.5), ORTO_RETRY_MAX);
         scheduleRestoreProbe();
       };
-
-      probe.src = '' + probeUrl + '?_=${Date.now()}';
+      probe.src = `${probeUrl}?_=${Date.now()}`;
     }, ortoRetryDelay);
   };
-
   scheduleRestoreProbe();
 });
 
 TILES.mapa.addTo(map);
-map.setMaxZoom(20); // počáteční maxZoom pro mapu
+map.setMaxZoom(20);
 
-// ── PŘEPNUTÍ PODKLADU ────────────────────────────────────────────
 function setTile(key) {
   if (activeTile === key) return;
-
   if (activeTile === 'orto' && ortoFallbackActive) map.removeLayer(ORTO_FALLBACK);
   else map.removeLayer(TILES[activeTile]);
-
-  activeTile         = key;
+  activeTile = key;
   ortoFallbackActive = false;
   TILES[key].addTo(map);
-
-  // Dynamické maxZoom podle vrstvy — ortofoto omezeno na 18
   map.setMaxZoom(key === 'orto' ? 19 : 20);
-
-  // Popisky ulic — přidat pro ortofoto, odebrat pro mapu
-  if (key === 'orto') {
-    if (!map.hasLayer(ORTO_LABELS)) ORTO_LABELS.addTo(map);
-  } else {
-    if (map.hasLayer(ORTO_LABELS)) map.removeLayer(ORTO_LABELS);
-  }
-
-  // QGIS vrstvy zpět navrch
-  qgisLayers.forEach(l => { if (l.visible && l.leaflet) l.leaflet.bringToFront(); });
-  poiGroup.bringToFront();
-
+  if (key === 'orto') { if (!map.hasLayer(ORTO_LABELS)) ORTO_LABELS.addTo(map); }
+  else { if (map.hasLayer(ORTO_LABELS)) map.removeLayer(ORTO_LABELS); }
+  if (typeof qgisLayers !== 'undefined') qgisLayers.forEach(l => { if (l.visible && l.leaflet) l.leaflet.bringToFront(); });
+  if (typeof poiGroup !== 'undefined') poiGroup.bringToFront();
   document.querySelectorAll('.tbtn').forEach(b => b.className = 'tbtn off');
   const _tbtn = document.getElementById('tbtn-' + key);
   if (_tbtn) _tbtn.className = 'tbtn on';
   if (typeof _syncLsTileBtn === 'function') _syncLsTileBtn();
 }
 
-
-// ── LANDSCAPE TILE TOGGLE ─────────────────────────────────────────
 function lsTileToggle() {
   const next = (activeTile === 'mapa') ? 'orto' : 'mapa';
   setTile(next);
@@ -305,92 +177,196 @@ function _syncLsTileBtn() {
   if (btn) btn.textContent = (activeTile === 'mapa') ? '🗺 Mapa' : '🛰 Ortofoto';
 }
 
-// ── SCREENSHOT MAPY — OPRAVA PRO LEAFLET TILES + OVERLAYE ──────────
-// Leaflet při posunu používá CSS transformace. html2canvas ale některé
-// vrstvy ořezává ještě před aplikací transformací. Proto v naklonované DOM
-// převádíme čisté translate transformace na left/top a teprve potom renderujeme.
-function _waitForLeafletTiles(root, timeout = 4000) {
-  const tiles = [...root.querySelectorAll('img.leaflet-tile')]
-    .filter(img => {
-      const st = getComputedStyle(img);
-      return st.display !== 'none' && st.visibility !== 'hidden';
-    });
+// ── WATERMARK — canvas-drawn, bottom-left, designer quality ──────
+function _drawWatermark(ctx, canvasW, canvasH, dpr) {
+  ctx.save();
 
-  if (!tiles.length) return Promise.resolve();
+  const pad   = 14 * dpr;
+  const r     = 8  * dpr;  // border-radius
+  const lineH = 15 * dpr;
 
-  return new Promise(resolve => {
-    let pending = 0;
-    let settled = false;
-    const cleanup = [];
+  // Fonts
+  const fzMain = 11 * dpr;
+  const fzSub  =  9 * dpr;
+  const txtMain = 'BOLATICE';
+  const txtSub  = 'interaktivní mapa obce';
+  const txtYear = String(new Date().getFullYear());
 
-    const finish = () => {
-      if (settled) return;
-      settled = true;
-      cleanup.forEach(fn => fn());
-      resolve();
-    };
+  ctx.font = `800 ${fzMain}px "Syne", "DM Sans", Arial, sans-serif`;
+  const wMain = ctx.measureText(txtMain).width;
+  ctx.font = `400 ${fzSub}px "DM Sans", Arial, sans-serif`;
+  const wSub  = ctx.measureText(txtSub).width;
+  ctx.font = `600 ${fzSub}px "DM Sans", Arial, sans-serif`;
+  const wYear = ctx.measureText(txtYear).width;
 
-    const doneOne = () => {
-      pending -= 1;
-      if (pending <= 0) finish();
-    };
+  const innerW = Math.max(wMain, wSub + wYear + 8 * dpr) + 20 * dpr;
+  const innerH = lineH * 2 + 14 * dpr;
 
-    tiles.forEach(img => {
-      if (img.complete && img.naturalWidth > 0) return;
-      pending += 1;
-      const onLoad = () => doneOne();
-      const onError = () => doneOne();
-      img.addEventListener('load', onLoad, { once: true });
-      img.addEventListener('error', onError, { once: true });
-      cleanup.push(() => {
-        img.removeEventListener('load', onLoad);
-        img.removeEventListener('error', onError);
-      });
-    });
+  const bx = pad;
+  const by = canvasH - innerH - pad;
 
-    if (pending === 0) {
-      finish();
-      return;
+  // Pill background — frosted glass feel
+  ctx.beginPath();
+  ctx.moveTo(bx + r, by);
+  ctx.lineTo(bx + innerW - r, by);
+  ctx.quadraticCurveTo(bx + innerW, by, bx + innerW, by + r);
+  ctx.lineTo(bx + innerW, by + innerH - r);
+  ctx.quadraticCurveTo(bx + innerW, by + innerH, bx + innerW - r, by + innerH);
+  ctx.lineTo(bx + r, by + innerH);
+  ctx.quadraticCurveTo(bx, by + innerH, bx, by + innerH - r);
+  ctx.lineTo(bx, by + r);
+  ctx.quadraticCurveTo(bx, by, bx + r, by);
+  ctx.closePath();
+  ctx.fillStyle = 'rgba(10, 14, 26, 0.72)';
+  ctx.fill();
+
+  // Accent left bar
+  ctx.fillStyle = '#3b82f6';
+  ctx.fillRect(bx, by + r, 3 * dpr, innerH - 2 * r);
+
+  // Main title
+  ctx.font = `800 ${fzMain}px "Syne", "DM Sans", Arial, sans-serif`;
+  ctx.letterSpacing = `${1.5 * dpr}px`;
+  ctx.fillStyle = '#ffffff';
+  ctx.shadowColor = 'rgba(0,0,0,0.5)';
+  ctx.shadowBlur  = 2 * dpr;
+  ctx.fillText(txtMain, bx + 12 * dpr, by + lineH + 4 * dpr);
+
+  // Subtitle
+  ctx.font = `400 ${fzSub}px "DM Sans", Arial, sans-serif`;
+  ctx.letterSpacing = '0px';
+  ctx.fillStyle = 'rgba(148,163,184,0.9)';
+  ctx.shadowBlur = 0;
+  ctx.fillText(txtSub, bx + 12 * dpr, by + lineH * 2 + 3 * dpr);
+
+  // Year — right side of subtitle
+  ctx.font = `600 ${fzSub}px "DM Sans", Arial, sans-serif`;
+  ctx.fillStyle = '#3b82f6';
+  ctx.fillText(txtYear, bx + innerW - wYear - 10 * dpr, by + lineH * 2 + 3 * dpr);
+
+  ctx.restore();
+}
+
+// ── POMOCNÉ FUNKCE PRO SCREENSHOT ────────────────────────────────
+
+function _parseLeafletTranslate(transformStr) {
+  if (!transformStr || transformStr === 'none') return null;
+  const m3d = transformStr.match(/translate3d\(\s*(-?[\d.]+)px?,\s*(-?[\d.]+)px?,\s*(-?[\d.]+)px?\s*\)/i);
+  if (m3d) return { x: parseFloat(m3d[1]), y: parseFloat(m3d[2]) };
+  const m2d = transformStr.match(/translate\(\s*(-?[\d.]+)px?,\s*(-?[\d.]+)px?\s*\)/i);
+  if (m2d) return { x: parseFloat(m2d[1]), y: parseFloat(m2d[2]) };
+  const mMat = transformStr.match(/matrix\(\s*1,\s*0,\s*0,\s*1,\s*(-?[\d.]+),\s*(-?[\d.]+)\s*\)/i);
+  if (mMat) return { x: parseFloat(mMat[1]), y: parseFloat(mMat[2]) };
+  return null;
+}
+
+/**
+ * Normalizace pro pokročilý režim (IS DMVS)
+ * Opravuje posun fialové SVG vrstvy.
+ */
+function _normalizeForISDMVS(clonedDoc, clonedMap, mapW, mapH) {
+  const view = clonedDoc.defaultView;
+  const mapPane = clonedMap.querySelector('.leaflet-map-pane');
+  let mapDx = 0, mapDy = 0;
+  
+  if (mapPane) {
+    const tr = _parseLeafletTranslate(view.getComputedStyle(mapPane).transform || mapPane.style.transform);
+    if (tr) {
+      mapDx = tr.x; mapDy = tr.y;
+      mapPane.style.transform = 'none'; mapPane.style.left = '0px'; mapPane.style.top = '0px';
     }
+  }
 
-    setTimeout(finish, timeout);
+  // Oprava SVG vrstvy (IS DMVS)
+  clonedMap.querySelectorAll('.leaflet-overlay-pane svg').forEach(svg => {
+    const tr = _parseLeafletTranslate(svg.style.transform);
+    const dx = (tr ? tr.x : 0) + mapDx; const dy = (tr ? tr.y : 0) + mapDy;
+    svg.setAttribute('width', mapW); svg.setAttribute('height', mapH);
+    svg.setAttribute('viewBox', `0 0 ${mapW} ${mapH}`);
+    svg.style.width = mapW + 'px'; svg.style.height = mapH + 'px';
+    svg.style.left = '0px'; svg.style.top = '0px'; svg.style.transform = 'none';
+    const g = svg.querySelector('g');
+    if (g) {
+      const gTr = g.getAttribute('transform') || '';
+      let gx = 0, gy = 0;
+      const m = gTr.match(/translate\(\s*(-?[\d.]+)px?,\s*(-?[\d.]+)px?\s*\)/i) || gTr.match(/translate\(\s*(-?[\d.]+),\s*(-?[\d.]+)\s*\)/i);
+      if (m) { gx = parseFloat(m[1]); gy = parseFloat(m[2]); }
+      g.setAttribute('transform', `translate(${gx + dx}, ${gy + dy})`);
+    }
+  });
+
+  // Oprava markerů
+  clonedMap.querySelectorAll('.leaflet-marker-icon, .leaflet-marker-shadow').forEach(marker => {
+    const tr = _parseLeafletTranslate(marker.style.transform);
+    marker.style.left = (parseFloat(marker.style.left) || 0) + (tr ? tr.x : 0) + mapDx + 'px';
+    marker.style.top = (parseFloat(marker.style.top) || 0) + (tr ? tr.y : 0) + mapDy + 'px';
+    marker.style.transform = 'none';
+  });
+
+  // Odstranění popupů v pokročilém režimu
+  clonedMap.querySelectorAll('.leaflet-popup').forEach(p => p.remove());
+}
+
+/**
+ * Normalizace pro výchozí režim
+ * Opravuje posun markerů a popupů.
+ */
+function _normalizeForDefault(clonedDoc, clonedMap, mapW, mapH) {
+  const view = clonedDoc.defaultView;
+  const mapPane = clonedMap.querySelector('.leaflet-map-pane');
+  let mapDx = 0, mapDy = 0;
+  
+  if (mapPane) {
+    const tr = _parseLeafletTranslate(view.getComputedStyle(mapPane).transform || mapPane.style.transform);
+    if (tr) { 
+      mapDx = tr.x; mapDy = tr.y; 
+      mapPane.style.transform = 'none'; mapPane.style.left = '0px'; mapPane.style.top = '0px'; 
+    }
+  }
+
+  clonedMap.querySelectorAll('.leaflet-marker-icon, .leaflet-marker-shadow, .leaflet-popup').forEach(el => {
+    const tr = _parseLeafletTranslate(el.style.transform);
+    if (el.classList.contains('leaflet-popup')) { 
+      el.style.display = 'block'; el.style.opacity = '1'; el.style.visibility = 'visible'; 
+    }
+    el.style.left = (parseFloat(el.style.left) || 0) + (tr ? tr.x : 0) + mapDx + 'px';
+    el.style.top = (parseFloat(el.style.top) || 0) + (tr ? tr.y : 0) + mapDy + 'px';
+    el.style.transform = 'none';
   });
 }
 
-function _toPxNumber(value) {
-  const n = parseFloat(value);
-  return Number.isFinite(n) ? n : 0;
-}
-
-
+// ── SCREENSHOT MAPY ──────────────────────────────────────────────
 async function mapScreenshot() {
   const btn = document.getElementById('map-screenshot-btn');
   if (btn) { btn.style.opacity = '.3'; btn.style.pointerEvents = 'none'; }
 
-  const mapEl = document.getElementById('map');
-  const mapW  = mapEl.offsetWidth;
-  const mapH  = mapEl.offsetHeight;
-  const dpr   = window.devicePixelRatio || 1;
-
   const hide = [
-    'header','#sidebar','#fab-col','#dbadge','#msr-panel',
-    '#nav-widget','#nav-pick-btn','#nav-confirm','#nav-recenter-btn',
-    '#stats-panel','#wx-fab','#wx-panel','#ev-draw-panel','#ev-fab',
-    '#map-screenshot-btn','#lightbox','.leaflet-control-zoom',
-    '.leaflet-control-scale','#sb-handle','#mob-search',
+    'header', '#sidebar', '#fab-col', '#dbadge', '#msr-panel',
+    '#nav-widget', '#nav-pick-btn', '#nav-confirm', '#nav-recenter-btn',
+    '#stats-panel', '#wx-fab', '#wx-panel', '#ev-draw-panel', '#ev-fab',
+    '#map-screenshot-btn', '#lightbox', '.leaflet-control-zoom',
+    '.leaflet-control-scale', '#sb-handle', '#mob-search',
   ].map(s => document.querySelector(s)).filter(Boolean);
+
+  // Skryj vrstvu událostí vždy — poloha polygonů se na snímku neshoduje
+  const evHiddenLayers = [];
+  if (typeof EV !== 'undefined' && EV.layer && map.hasLayer(EV.layer)) {
+    map.removeLayer(EV.layer); evHiddenLayers.push(EV.layer);
+  }
+  if (typeof _plannedLayer !== 'undefined' && _plannedLayer && map.hasLayer(_plannedLayer)) {
+    map.removeLayer(_plannedLayer); evHiddenLayers.push(_plannedLayer);
+  }
+
   const prevVis = hide.map(el => el.style.visibility);
   hide.forEach(el => el.style.visibility = 'hidden');
 
-  // V pokročilém režimu: skryj IS DMVS overlay před screenshotem — pozice nesedí s html2canvas
-  const advOn = document.body.classList.contains('adv-on');
-  let hiddenOverlay = null;
-  if (advOn) {
-    const overlay = mapEl.querySelector('.leaflet-overlay-pane');
-    if (overlay) { hiddenOverlay = overlay; overlay.style.visibility = 'hidden'; }
-  }
-
   try {
+    const mapContainer = document.getElementById('map');
+    const dpr = window.devicePixelRatio || 1;
+    const mapW = mapContainer.offsetWidth;
+    const mapH = mapContainer.offsetHeight;
+
+    // 1. Ujistíme se, že html2canvas je načten
     if (typeof html2canvas === 'undefined') {
       const s = document.createElement('script');
       s.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
@@ -398,67 +374,50 @@ async function mapScreenshot() {
       await new Promise((res, rej) => { s.onload = res; s.onerror = rej; });
     }
 
-    const canvas = await html2canvas(mapEl, {
-      useCORS:         true,
-      allowTaint:      false,
-      backgroundColor: null,
-      scale:           dpr,
-      logging:         false,
-      x:               0,
-      y:               0,
-      scrollX:         0,
-      scrollY:         0,
-      width:           mapW,
-      height:          mapH,
-      ignoreElements:  el => el.id === 'map-screenshot-btn',
-      onclone: (clonedDoc, clonedEl) => {
-        // map-pane translate3d → left/top (html2canvas nezvládá translate3d)
-        const mapPane = clonedEl.querySelector('.leaflet-map-pane');
-        if (mapPane) {
-          const m = (mapPane.style.transform || '').match(/translate3d\(\s*(-?[\d.]+)px,\s*(-?[\d.]+)px/);
-          if (m) {
-            mapPane.style.transform = 'none';
-            mapPane.style.left = m[1] + 'px';
-            mapPane.style.top  = m[2] + 'px';
-          }
-        }
-        // Fotky v popupech — CORS
-        clonedEl.querySelectorAll('.ppop-photo, .ppop-photo-wrap').forEach(el => el.remove());
-        // #map overflow:hidden — popup nepřeteče
-        clonedEl.style.width = mapW + 'px'; clonedEl.style.height = mapH + 'px';
-        clonedEl.style.overflow = 'hidden'; clonedEl.style.position = 'relative';
+    // 2. (watermark se kreslí na canvas textově po generování)
+
+    // 3. Počkáme na dlaždice
+    const tiles = Array.from(mapContainer.querySelectorAll('.leaflet-tile-pane img'));
+    await Promise.all(tiles.map(img => {
+      if (img.complete) return Promise.resolve();
+      return new Promise(res => { img.onload = res; img.onerror = res; });
+    }));
+
+    // 4. Generování canvasu
+    const canvas = await html2canvas(mapContainer, {
+      useCORS: true, allowTaint: false, backgroundColor: null, scale: dpr, logging: false,
+      width: mapW, height: mapH, ignoreElements: el => el.id === 'map-screenshot-btn',
+      onclone: (clonedDoc) => {
+        const clonedMap = clonedDoc.getElementById('map');
+        if (!clonedMap) return;
+
+        clonedMap.querySelectorAll('.leaflet-popup img').forEach(img => {
+          const src = img.src || '';
+          const isLocal = src.startsWith('data:') || src.includes(window.location.hostname) || src.startsWith('/') || src.includes('blob:');
+          if (!isLocal) img.remove();
+        });
+        clonedMap.querySelectorAll('img').forEach(img => img.setAttribute('crossOrigin', 'anonymous'));
+
+        const advBtn = document.getElementById('adv-btn');
+        const isAdvancedMode = advBtn && advBtn.classList.contains('active');
+
+        if (isAdvancedMode) _normalizeForISDMVS(clonedDoc, clonedMap, mapW, mapH);
+        else _normalizeForDefault(clonedDoc, clonedMap, mapW, mapH);
       }
     });
 
     const ctx = canvas.getContext('2d');
 
-    // Watermark — dle WATERMARK_MODE v konfiguraci
-    if (WATERMARK_MODE === 'png' && _wmCanvas) {
-      // PNG logo (vyžaduje crossOrigin a same-origin hosting)
-      const pad = 10 * dpr;
-      ctx.drawImage(_wmCanvas, pad, canvas.height - _wmCanvas.height - pad);
-    } else {
-      // Textový watermark — vždy spolehlivý, neovlivňuje canvas taint
-      ctx.font = 'bold ' + (11 * dpr) + 'px "DM Sans", sans-serif';
-      ctx.fillStyle = 'rgba(255,255,255,.82)';
-      ctx.shadowColor = 'rgba(0,0,0,.65)';
-      ctx.shadowBlur  = 3 * dpr;
-      ctx.fillText('Interaktivní mapa Bolatic', 8 * dpr, canvas.height - 8 * dpr);
-      ctx.shadowBlur  = 0;
-    }
-
-    // Lokální datum (CET/CEST)
-    const now  = new Date();
-    const pad  = n => String(n).padStart(2, '0');
-    const date = now.getFullYear() + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate());
+    // 5. Watermark — text přímo na canvas
+    _drawWatermark(ctx, canvas.width, canvas.height, dpr);
 
     canvas.toBlob(blob => {
-      const url  = URL.createObjectURL(blob);
+      const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
-      link.download = 'mapa-bolatice-' + date + '.png';
+      link.download = `mapa-bolatice-${new Date().toISOString().slice(0,10)}.png`;
       link.href = url;
       link.click();
-      setTimeout(() => URL.revokeObjectURL(url), 2000);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
     }, 'image/png');
 
   } catch(e) {
@@ -466,45 +425,15 @@ async function mapScreenshot() {
     alert('Snímek se nepodařilo pořídit: ' + e.message);
   } finally {
     hide.forEach((el, i) => el.style.visibility = prevVis[i]);
-    if (hiddenOverlay) hiddenOverlay.style.visibility = '';
+    // Obnov vrstvy událostí
+    evHiddenLayers.forEach(l => l.addTo(map));
     if (btn) { btn.style.opacity = ''; btn.style.pointerEvents = ''; }
   }
 }
 
-// Předem načti html2canvas
 (function() {
   if (typeof html2canvas !== 'undefined') return;
   const s = document.createElement('script');
   s.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
   s.async = true; document.head.appendChild(s);
 })();
-
-// ── WATERMARK PRELOADER ───────────────────────────────────────────
-let _wmCanvas = null;
-(function _preloadWatermark() {
-  if (WATERMARK_MODE !== 'png') return; // textový mode nepotřebuje preload
-
-  const img = new Image();
-  img.crossOrigin = 'anonymous'; // nutné pro canvas.toBlob bez CORS taintu
-  img.onload = () => {
-    const dpr = window.devicePixelRatio || 1;
-    const h = 30, scale = h / img.naturalHeight, w = img.naturalWidth * scale;
-    const c = document.createElement('canvas');
-    c.width  = Math.ceil(w * dpr);
-    c.height = Math.ceil(h * dpr);
-    const x = c.getContext('2d');
-    x.scale(dpr, dpr);
-    x.globalAlpha = 0.82;
-    x.shadowColor = 'rgba(0,0,0,.55)';
-    x.shadowBlur  = 3;
-    x.drawImage(img, 0, 0, w, h);
-    _wmCanvas = c;
-    console.info('[watermark] PNG logo načteno');
-  };
-  img.onerror = () => {
-    console.info('[watermark] PNG nedostupné, použije se textový watermark');
-    _wmCanvas = null;
-  };
-  img.src = 'css/ikonky/watermark.png';
-})();
-

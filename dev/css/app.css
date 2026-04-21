@@ -2140,4 +2140,4 @@ body.nav-on #nav-pick-btn { display: none !important; }
 }
 /* popupPane: isolation:isolate = vlastní stacking context, vždy navrchu */
 .leaflet-popup-pane { isolation: isolate; z-index: 700 !important; }
-
+@media (orientation: landscape) and (max-height: 560px) { #map-screenshot-btn { display: none !important; } }
