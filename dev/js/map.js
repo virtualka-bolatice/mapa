@@ -4,7 +4,7 @@
 // WATERMARK_MODE: 'text' = textový watermark (vždy funguje)
 //                 'png'  = logo ze css/ikonky/watermark.png
 //                          (GitHub Pages: same-origin, PNG načtení funguje)
-const WATERMARK_MODE = 'text';
+const WATERMARK_MODE = 'png';
 // ─────────────────────────────────────────────────────────────────
 
 // PNG preloader — aktivní pouze při WATERMARK_MODE = 'png'
