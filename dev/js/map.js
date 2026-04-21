@@ -15,7 +15,7 @@ let _wmCanvas = null;
   img.crossOrigin = 'anonymous';
   img.onload = () => {
     const dpr = window.devicePixelRatio || 1;
-    const h = 45, scale = h / img.naturalHeight, w = img.naturalWidth * scale;
+    const h = 70, scale = h / img.naturalHeight, w = img.naturalWidth * scale;
     const c = document.createElement('canvas');
     c.width = Math.ceil(w * dpr); c.height = Math.ceil(h * dpr);
     const x = c.getContext('2d');
