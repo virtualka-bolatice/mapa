@@ -240,6 +240,8 @@ window._evDeleteConfirm = function(id) {
 // ── KRESLENÍ ─────────────────────────────────────────────────────
 function _startDrawing(type) {
   if (!EV.loggedIn) return;
+  // Pokud probíhá kreslení, zruš ho nejdřív (odstraní body na mapě)
+  if (EV.drawing) _cancelDrawing();
   EV._pendingType = type;
   EV.drawing = true;
   EV.drawPts = [];
@@ -250,9 +252,27 @@ function _startDrawing(type) {
   const panel = document.getElementById('ev-draw-panel');
   if (panel) {
     const cfg_ = EVENTS_CONFIG.EVENT_TYPES[type];
-    panel.querySelector('.ev-draw-hint').textContent = cfg_?.isRoute
-      ? `Trasuj: ${cfg_?.label} — klikej body trasy, Enter = dokončit, Esc = zrušit`
-      : `Kreslíš: ${cfg_?.label} — klikej body plochy, Enter = dokončit, Esc = zrušit`;
+    const isRoute_ = cfg_?.isRoute;
+    const isMob_ = window.innerWidth < 769 || 'ontouchstart' in window;
+    const hintEl = panel.querySelector('.ev-draw-hint');
+    if (isMob_) {
+      hintEl.textContent = isRoute_
+        ? 'Klikej body trasy → ✓ dokončit'
+        : 'Klikej body plochy → uzavři obrazec';
+    } else {
+      hintEl.textContent = isRoute_
+        ? 'Trasuj: ' + (cfg_?.label || '') + ' — klikej body, Enter = dokončit, Esc = zrušit'
+        : 'Kreslíš: ' + (cfg_?.label || '') + ' — klikej body, Enter = dokončit, Esc = zrušit';
+    }
+    // Mobilní confirm lišta — pouze pro trasu (polygon se uzavírá sám)
+    const mBar = document.getElementById('ev-draw-mobile-bar');
+    if (mBar) {
+      if (isRoute_ && isMob_) {
+        mBar.classList.add('ev-bar-visible');
+      } else {
+        mBar.classList.remove('ev-bar-visible');
+      }
+    }
     panel.classList.add('ev-drawing');
   }
 }
@@ -268,6 +288,10 @@ function _drawClick(e) {
   }
 
   EV.drawPts.push(e.latlng);
+
+  // Aktualizuj počítadlo bodů v mobilní liště (mezera za číslem)
+  const _ptsEl = document.getElementById('ev-mob-pts-cnt');
+  if (_ptsEl) _ptsEl.textContent = EV.drawPts.length + ' ';
 
   // Tečka
   EV.drawDots.push(
@@ -302,6 +326,9 @@ function _cleanupDraw() {
   EV.drawDots.forEach(d => EV.map.removeLayer(d));
   EV.drawDots = [];
   document.getElementById('ev-draw-panel')?.classList.remove('ev-drawing');
+  // Skryj mobilní confirm lištu
+  const mBar = document.getElementById('ev-draw-mobile-bar');
+  if (mBar) mBar.classList.remove('ev-bar-visible');
 }
 
 async function _finishDrawing() {

@@ -1721,13 +1721,14 @@ body.nav-on #nav-pick-btn { display: none !important; }
   padding: 0 !important;
   min-width: 0 !important;
   width: auto !important;
-  max-width: 260px !important;
+  max-width: 280px !important;
 }
 .geo-popup .leaflet-popup-content {
   margin: 0 !important;
   width: auto !important;
-  min-width: 0 !important;
-  max-width: 150px !important;
+  min-width: 172px !important;
+  max-width: 260px !important;
+  white-space: nowrap !important;
 }
 .geo-popup .leaflet-popup-tip-container { display: none !important; }
 .geo-popup .leaflet-popup-close-button {
@@ -2139,4 +2140,4 @@ body.nav-on #nav-pick-btn { display: none !important; }
 }
 /* popupPane: isolation:isolate = vlastní stacking context, vždy navrchu */
 .leaflet-popup-pane { isolation: isolate; z-index: 700 !important; }
-
+@media (orientation: landscape) and (max-height: 560px) { #map-screenshot-btn { display: none !important; } }
