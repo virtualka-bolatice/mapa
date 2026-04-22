@@ -289,6 +289,10 @@ function _drawClick(e) {
 
   EV.drawPts.push(e.latlng);
 
+  // Aktualizuj počítadlo bodů v mobilní liště (mezera za číslem)
+  const _ptsEl = document.getElementById('ev-mob-pts-cnt');
+  if (_ptsEl) _ptsEl.textContent = EV.drawPts.length + ' ';
+
   // Tečka
   EV.drawDots.push(
     L.circleMarker(e.latlng, {
