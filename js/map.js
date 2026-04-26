@@ -78,6 +78,15 @@ if (overlayPane && overlayPane.parentNode) {
   overlayPane.parentNode.appendChild(labelsPane);
 }
 
+map.createPane('measurePane');
+const measureEl = map.getPane('measurePane');
+measureEl.style.zIndex = '425';
+
+// Oprava rotace — přesun measurePane do stejného rodiče jako overlayPane
+if (overlayPane && overlayPane.parentNode) {
+  overlayPane.parentNode.appendChild(measureEl);
+}
+
 map.createPane('navPane');
 map.getPane('navPane').style.zIndex = '460';
 map.getPane('navPane').style.pointerEvents = 'none';
