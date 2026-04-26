@@ -353,6 +353,20 @@ function _normalizeForISDMVS(clonedDoc, clonedMap, mapW, mapH) {
     });
   }
 
+  // Oprava labels pane (Stadia Maps popisky)
+  const labelsPane = clonedMap.querySelector('[style*="z-index: 450"]');
+  if (labelsPane && labelsPane.classList.contains('leaflet-pane')) {
+    const tr = _parseLeafletTranslate(labelsPane.style.transform);
+    const dx = (tr ? tr.x : 0) + mapDx; const dy = (tr ? tr.y : 0) + mapDy;
+    labelsPane.style.transform = 'none'; labelsPane.style.left = '0px'; labelsPane.style.top = '0px';
+    labelsPane.querySelectorAll('img').forEach(img => {
+      const iTr = _parseLeafletTranslate(img.style.transform);
+      img.style.left = (parseFloat(img.style.left) || 0) + (iTr ? iTr.x : 0) + dx + 'px';
+      img.style.top = (parseFloat(img.style.top) || 0) + (iTr ? iTr.y : 0) + dy + 'px';
+      img.style.transform = 'none';
+    });
+  }
+
   // Oprava markerů
   clonedMap.querySelectorAll('.leaflet-marker-icon, .leaflet-marker-shadow').forEach(marker => {
     const tr = _parseLeafletTranslate(marker.style.transform);
@@ -407,6 +421,20 @@ function _normalizeForDefault(clonedDoc, clonedMap, mapW, mapH) {
       svg.style.left = (parseFloat(svg.style.left) || 0) + (sTr ? sTr.x : 0) + dx + 'px';
       svg.style.top = (parseFloat(svg.style.top) || 0) + (sTr ? sTr.y : 0) + dy + 'px';
       svg.style.transform = 'none';
+    });
+  }
+
+  // Oprava labels pane (Stadia Maps popisky)
+  const labelsPane = clonedMap.querySelector('[style*="z-index: 450"]');
+  if (labelsPane && labelsPane.classList.contains('leaflet-pane')) {
+    const tr = _parseLeafletTranslate(labelsPane.style.transform);
+    const dx = (tr ? tr.x : 0) + mapDx; const dy = (tr ? tr.y : 0) + mapDy;
+    labelsPane.style.transform = 'none'; labelsPane.style.left = '0px'; labelsPane.style.top = '0px';
+    labelsPane.querySelectorAll('img').forEach(img => {
+      const iTr = _parseLeafletTranslate(img.style.transform);
+      img.style.left = (parseFloat(img.style.left) || 0) + (iTr ? iTr.x : 0) + dx + 'px';
+      img.style.top = (parseFloat(img.style.top) || 0) + (iTr ? iTr.y : 0) + dy + 'px';
+      img.style.transform = 'none';
     });
   }
 
