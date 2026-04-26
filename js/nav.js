@@ -388,7 +388,7 @@ async function _startNav(tLat,tLng,tName,mode,driveRoute,walkRoute) {
       html:`<div style="width:26px;height:26px;background:#f97316;border:3px solid #fff;border-radius:50%;box-shadow:0 0 16px #f97316bb;display:flex;align-items:center;justify-content:center;font-size:.8rem">🎯</div>`,
       className:'', iconSize:[26,26], iconAnchor:[13,13]
     }), zIndexOffset:800
-  }).addTo(map).bindPopup(`<div style="padding:6px 10px;font-size:.75rem;font-family:DM Sans,sans-serif">🎯 <strong>${tName||'Cíl'}</strong></div>`);
+  }).addTo(map).bindPopup(`<div style="color:#ffffff;padding:8px 12px;font-size:.75rem;font-family:DM Sans,sans-serif;line-height:1.35;word-break:break-word;white-space:normal;max-width:280px;">🎯 <strong>${tName||'Cíl'}</strong></div>`, {maxWidth: 300});
 
   _showNavWidget(mode,tName,dur,dist);
   document.body.classList.add('nav-on');
@@ -735,6 +735,8 @@ function clearNav() {
   // Obnov geo FAB + znovu zobraz geo marker
   document.getElementById('fab-geo')?.classList.remove('nav-taking-over');
   document.body.classList.remove('nav-on');  // nav-on pryč PŘED showGeoVisuals
+  // Čisté vymazání geolokačních vrstev — skryj starý marker + radius
+  if (typeof hideGeoVisuals === 'function') hideGeoVisuals();
   if (typeof showGeoVisuals === 'function') showGeoVisuals();
   if (typeof map.setBearing === 'function') map.setBearing(0);
   document.body.classList.remove('map-rotated');
