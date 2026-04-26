@@ -300,7 +300,7 @@ function _parseLeafletTranslate(transformStr) {
 
 /**
  * Normalizace pro pokročilý režim (IS DMVS)
- * Opravuje posun fialové SVG vrstvy.
+ * Opravuje posun dlaždic, SVG vrstvy a markerů.
  */
 function _normalizeForISDMVS(clonedDoc, clonedMap, mapW, mapH) {
   const view = clonedDoc.defaultView;
@@ -315,23 +315,43 @@ function _normalizeForISDMVS(clonedDoc, clonedMap, mapW, mapH) {
     }
   }
 
-  // Oprava SVG vrstvy (IS DMVS)
-  clonedMap.querySelectorAll('.leaflet-overlay-pane svg').forEach(svg => {
-    const tr = _parseLeafletTranslate(svg.style.transform);
+  // Oprava tile pane (dlaždice)
+  const tilePane = clonedMap.querySelector('.leaflet-tile-pane');
+  if (tilePane) {
+    const tr = _parseLeafletTranslate(tilePane.style.transform);
     const dx = (tr ? tr.x : 0) + mapDx; const dy = (tr ? tr.y : 0) + mapDy;
-    svg.setAttribute('width', mapW); svg.setAttribute('height', mapH);
-    svg.setAttribute('viewBox', `0 0 ${mapW} ${mapH}`);
-    svg.style.width = mapW + 'px'; svg.style.height = mapH + 'px';
-    svg.style.left = '0px'; svg.style.top = '0px'; svg.style.transform = 'none';
-    const g = svg.querySelector('g');
-    if (g) {
-      const gTr = g.getAttribute('transform') || '';
-      let gx = 0, gy = 0;
-      const m = gTr.match(/translate\(\s*(-?[\d.]+)px?,\s*(-?[\d.]+)px?\s*\)/i) || gTr.match(/translate\(\s*(-?[\d.]+),\s*(-?[\d.]+)\s*\)/i);
-      if (m) { gx = parseFloat(m[1]); gy = parseFloat(m[2]); }
-      g.setAttribute('transform', `translate(${gx + dx}, ${gy + dy})`);
-    }
-  });
+    tilePane.style.transform = 'none'; tilePane.style.left = '0px'; tilePane.style.top = '0px';
+    tilePane.querySelectorAll('img').forEach(img => {
+      const iTr = _parseLeafletTranslate(img.style.transform);
+      img.style.left = (parseFloat(img.style.left) || 0) + (iTr ? iTr.x : 0) + dx + 'px';
+      img.style.top = (parseFloat(img.style.top) || 0) + (iTr ? iTr.y : 0) + dy + 'px';
+      img.style.transform = 'none';
+    });
+  }
+
+  // Oprava overlay pane (SVG vrstvy)
+  const overlayPane = clonedMap.querySelector('.leaflet-overlay-pane');
+  if (overlayPane) {
+    const tr = _parseLeafletTranslate(overlayPane.style.transform);
+    const dx = (tr ? tr.x : 0) + mapDx; const dy = (tr ? tr.y : 0) + mapDy;
+    overlayPane.style.transform = 'none'; overlayPane.style.left = '0px'; overlayPane.style.top = '0px';
+    overlayPane.querySelectorAll('svg').forEach(svg => {
+      const sTr = _parseLeafletTranslate(svg.style.transform);
+      const svgDx = (sTr ? sTr.x : 0) + dx; const svgDy = (sTr ? sTr.y : 0) + dy;
+      svg.setAttribute('width', mapW); svg.setAttribute('height', mapH);
+      svg.setAttribute('viewBox', `0 0 ${mapW} ${mapH}`);
+      svg.style.width = mapW + 'px'; svg.style.height = mapH + 'px';
+      svg.style.left = '0px'; svg.style.top = '0px'; svg.style.transform = 'none';
+      const g = svg.querySelector('g');
+      if (g) {
+        const gTr = g.getAttribute('transform') || '';
+        let gx = 0, gy = 0;
+        const m = gTr.match(/translate\(\s*(-?[\d.]+)px?,\s*(-?[\d.]+)px?\s*\)/i) || gTr.match(/translate\(\s*(-?[\d.]+),\s*(-?[\d.]+)\s*\)/i);
+        if (m) { gx = parseFloat(m[1]); gy = parseFloat(m[2]); }
+        g.setAttribute('transform', `translate(${gx + svgDx}, ${gy + svgDy})`);
+      }
+    });
+  }
 
   // Oprava markerů
   clonedMap.querySelectorAll('.leaflet-marker-icon, .leaflet-marker-shadow').forEach(marker => {
@@ -347,7 +367,7 @@ function _normalizeForISDMVS(clonedDoc, clonedMap, mapW, mapH) {
 
 /**
  * Normalizace pro výchozí režim
- * Opravuje posun markerů a popupů.
+ * Opravuje posun dlaždic, overlay vrstev, markerů a popupů.
  */
 function _normalizeForDefault(clonedDoc, clonedMap, mapW, mapH) {
   const view = clonedDoc.defaultView;
@@ -362,6 +382,35 @@ function _normalizeForDefault(clonedDoc, clonedMap, mapW, mapH) {
     }
   }
 
+  // Oprava tile pane (dlaždice)
+  const tilePane = clonedMap.querySelector('.leaflet-tile-pane');
+  if (tilePane) {
+    const tr = _parseLeafletTranslate(tilePane.style.transform);
+    const dx = (tr ? tr.x : 0) + mapDx; const dy = (tr ? tr.y : 0) + mapDy;
+    tilePane.style.transform = 'none'; tilePane.style.left = '0px'; tilePane.style.top = '0px';
+    tilePane.querySelectorAll('img').forEach(img => {
+      const iTr = _parseLeafletTranslate(img.style.transform);
+      img.style.left = (parseFloat(img.style.left) || 0) + (iTr ? iTr.x : 0) + dx + 'px';
+      img.style.top = (parseFloat(img.style.top) || 0) + (iTr ? iTr.y : 0) + dy + 'px';
+      img.style.transform = 'none';
+    });
+  }
+
+  // Oprava overlay pane (SVG vrstvy)
+  const overlayPane = clonedMap.querySelector('.leaflet-overlay-pane');
+  if (overlayPane) {
+    const tr = _parseLeafletTranslate(overlayPane.style.transform);
+    const dx = (tr ? tr.x : 0) + mapDx; const dy = (tr ? tr.y : 0) + mapDy;
+    overlayPane.style.transform = 'none'; overlayPane.style.left = '0px'; overlayPane.style.top = '0px';
+    overlayPane.querySelectorAll('svg').forEach(svg => {
+      const sTr = _parseLeafletTranslate(svg.style.transform);
+      svg.style.left = (parseFloat(svg.style.left) || 0) + (sTr ? sTr.x : 0) + dx + 'px';
+      svg.style.top = (parseFloat(svg.style.top) || 0) + (sTr ? sTr.y : 0) + dy + 'px';
+      svg.style.transform = 'none';
+    });
+  }
+
+  // Oprava markerů a popupů
   clonedMap.querySelectorAll('.leaflet-marker-icon, .leaflet-marker-shadow, .leaflet-popup').forEach(el => {
     const tr = _parseLeafletTranslate(el.style.transform);
     if (el.classList.contains('leaflet-popup')) { 
