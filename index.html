@@ -493,5 +493,418 @@ document.addEventListener('click', () => {
     <button class="ev-mob-bar-btn ev-mob-bar-confirm" onclick="if(typeof _finishDrawing==='function')_finishDrawing()" title="Dokončit">✓</button>
     <button class="ev-mob-bar-btn ev-mob-bar-cancel"  onclick="if(typeof _cancelDrawing==='function')_cancelDrawing()"  title="Zrušit">✕</button>
   </div>
+<!-- ══ DEMO HESLO — odeber celý tento blok pro odstranění funkce ══ -->
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  #_dpCard {
+    position: fixed;
+    pointer-events: auto;
+    top: 22.4%;
+    right: clamp(16px, 4vw, 48px);
+    transform: translateY(-50%);
+    width: clamp(300px, 32vw, 360px);
+    background: rgba(18, 22, 34, 0.92);
+    border: 1px solid rgba(255,255,255,.1);
+    border-radius: 16px;
+    box-shadow: 0 24px 64px rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,.04) inset, 0 1px 0 rgba(255,255,255,.08) inset;
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    overflow: hidden;
+    z-index: 10000;
+    display: none;
+  }
+
+  #_dpCard.open {
+    display: block;
+    animation: _dpFloatIn .4s cubic-bezier(.34,1.28,.64,1) both;
+  }
+
+  @keyframes _dpFloatIn {
+    from { opacity: 0; transform: translateY(calc(-50% + 18px)) scale(.96); }
+    to   { opacity: 1; transform: translateY(-50%) scale(1); }
+  }
+
+  ._dph {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px 10px;
+    border-bottom: 1px solid rgba(255,255,255,.07);
+    background: rgba(255,255,255,.03);
+  }
+
+  ._dpl {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: .68rem;
+    font-weight: 700;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: rgba(148,163,184,.65);
+  }
+
+._dpd {
+  position: relative;
+  width: 20px;
+  height: 20px;
+
+  display: inline-flex;
+  justify-content: center;
+
+  color: #ffcf19;
+  font-size: 13px;
+}
+
+/* ikona zámku */
+._dpd::before {
+  content: "🔒";
+  z-index: 2;
+}
+
+/* pulzující „pozadí“ */
+._dpd::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  margin: auto;
+
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+
+  background: radial-gradient(circle, #fbff00 0%, transparent 70%);
+  opacity: 0.6;
+
+  animation: _dpPulse 3.4s ease-in-out infinite;
+  z-index: 1;
+}
+
+/* animace pulzu */
+@keyframes _dpPulse {
+  0% {
+    transform: scale(1.2);
+    opacity: 0.7;
+  }
+  50% {
+    transform: scale(1.6);
+    opacity: 0.2;
+  }
+  100% {
+    transform: scale(1.2);
+    opacity: 0.7;
+  }
+}
+
+  ._dpx {
+    width: 26px;
+    height: 26px;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,.08);
+    background: rgba(255,255,255,.05);
+    color: rgba(148,163,184,.6);
+    font-size: .8rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background .15s, color .15s, transform .1s;
+    line-height: 1;
+  }
+
+  ._dpx:hover {
+    background: rgba(239,68,68,.18);
+    border-color: rgba(239,68,68,.3);
+    color: #f87171;
+  }
+
+  ._dpx:active { transform: scale(.88); }
+
+  ._dpb {
+    padding: 16px 18px 18px;
+  }
+
+  ._dpdesc {
+    font-size: .72rem;
+    color: rgba(100,116,139,.85);
+    margin-bottom: 12px;
+    line-height: 1.5;
+  }
+
+  ._dpf {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(255,255,255,.04);
+    border: 1px solid rgba(255,255,255,.1);
+    border-radius: 10px;
+    padding: 10px 14px;
+    transition: border-color .15s;
+  }
+
+  ._dpf:hover { border-color: rgba(255,255,255,.2); }
+
+  ._dpicon {
+    font-size: 1rem;
+    flex-shrink: 0;
+    opacity: .75;
+  }
+
+  ._dpv {
+    font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+    font-size: .95rem;
+    font-weight: 600;
+    color: #e2e8f0;
+    letter-spacing: .5px;
+    flex: 1;
+    word-break: break-all;
+  }
+
+  ._dpc {
+    flex-shrink: 0;
+    width: 30px;
+    height: 30px;
+    border-radius: 7px;
+    border: 1px solid rgba(255,255,255,.08);
+    background: rgba(255,255,255,.06);
+    color: rgba(148,163,184,.6);
+    cursor: pointer;
+    font-size: .78rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background .15s, color .15s;
+  }
+
+  ._dpc:hover { background: rgba(14,165,233,.2); color: #38bdf8; border-color: rgba(14,165,233,.3); }
+  ._dpc.copied { background: rgba(34,197,94,.2); color: #4ade80; border-color: rgba(34,197,94,.3); }
+
+  ._dpn {
+    margin-top: 11px;
+    font-size: .63rem;
+    color: rgba(100,116,139,.6);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  #_dpBtn {
+    position: fixed;
+    pointer-events: auto;
+    top: calc(var(--hdr) + 52px);
+    right: 8px;
+    transform: none;
+    z-index: 1048;
+    padding: 10px 18px;
+    border-radius: 16px;
+    border: 1px solid rgba(255,215,105,.35);
+    background: rgba(26, 28, 36, 0.95);
+    color: #f8e7b7;
+    font-size: .82rem;
+    font-weight: 700;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: background .2s, color .2s, transform .15s, box-shadow .2s;
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    box-shadow: 0 0 12px rgba(255,205,80,.16), 0 0 28px rgba(255,175,35,.12), inset 0 0 0 1px rgba(255,215,105,.18);
+    overflow: visible;
+  }
+
+  #_dpBtn::before {
+    content: '';
+    position: absolute;
+    inset: -12px;
+    border-radius: 20px;
+    background: radial-gradient(ellipse 50% 100% at 50% 50%, rgba(255,220,140,.25) 0%, rgba(255,200,80,.1) 30%, transparent 70%);
+    filter: blur(14px);
+    opacity: .6;
+    z-index: -1;
+    pointer-events: none;
+    animation: _dpGlowSvit 4.4s ease-in-out infinite;
+  }
+
+  #_dpBtn::after {
+    display: none;
+  }
+
+  ._dpParticle {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    font-size: 9px;
+    color: #ffd06e;
+    pointer-events: none;
+    margin-left: -4.5px;
+    margin-top: -4.5px;
+    text-shadow: 0 0 10px rgba(255,220,150,.8), 0 0 20px rgba(255,200,100,.5);
+    animation: _dpStarFloat 3.8s ease-in-out infinite;
+    animation-delay: var(--delay);
+  }
+
+  @keyframes _dpStarFloat {
+    0% {
+      transform: translate(var(--x), var(--y)) translateX(-6px) translateY(16px) scale(.4);
+      opacity: 0;
+      filter: drop-shadow(0 0 4px rgba(255,220,150,0));
+    }
+    15% {
+      transform: translate(var(--x), var(--y)) translateX(5px) translateY(6px) scale(1);
+      opacity: 1;
+      filter: drop-shadow(0 0 8px rgba(255,220,150,.9)) drop-shadow(0 0 16px rgba(255,200,100,.7));
+    }
+    35% {
+      transform: translate(var(--x), var(--y)) translateX(-4px) translateY(-8px) scale(.8);
+      opacity: .8;
+      filter: drop-shadow(0 0 8px rgba(255,220,150,.7)) drop-shadow(0 0 14px rgba(255,200,100,.5));
+    }
+    55% {
+      transform: translate(var(--x), var(--y)) translateX(6px) translateY(-20px) scale(.65);
+      opacity: .5;
+      filter: drop-shadow(0 0 6px rgba(255,220,150,.5)) drop-shadow(0 0 12px rgba(255,200,100,.3));
+    }
+    75% {
+      transform: translate(var(--x), var(--y)) translateX(-3px) translateY(-32px) scale(.4);
+      opacity: .2;
+      filter: drop-shadow(0 0 4px rgba(255,220,150,.2));
+    }
+    100% {
+      transform: translate(var(--x), var(--y)) translateX(4px) translateY(-48px) scale(.1);
+      opacity: 0;
+      filter: drop-shadow(0 0 2px rgba(255,220,150,0));
+    }
+  }
+
+  @keyframes _dpGlowSvit {
+    0%, 100% { 
+      opacity: .45; 
+      filter: blur(14px);
+      box-shadow: 0 0 12px rgba(255,220,150,.4), 0 0 28px rgba(255,200,100,.2);
+    }
+    50% { 
+      opacity: .75; 
+      filter: blur(12px);
+      box-shadow: 0 0 22px rgba(255,220,150,.8), 0 0 50px rgba(255,200,100,.4);
+    }
+  }
+
+  @keyframes _dpParticleMove {
+    0% {
+      transform: rotate(var(--angle)) translateX(30px) scale(1);
+      opacity: 1;
+    }
+    50% {
+      opacity: .8;
+    }
+    100% {
+      transform: rotate(var(--angle)) translateX(60px) scale(0);
+      opacity: 0;
+    }
+  }
+
+  #_dpBtn:hover {
+    background: rgba(38, 40, 52, 0.98);
+    color: #fff2c1;
+    box-shadow: 0 0 28px rgba(255,215,90,.35), 0 0 64px rgba(255,160,40,.22), inset 0 0 0 1px rgba(255,235,160,.25);
+    transform: translateY(-1px);
+  }
+
+  /* ── Mobil portrait: proužek dole ── */
+  @media (max-width: 768px) and (orientation: portrait) {
+    #_dpCard {
+      top: calc(var(--hdr) + 126px);
+      right: 12px;
+      transform: none;
+      width: calc(100vw - 24px);
+      max-width: 420px;
+      border-radius: 14px;
+    }
+
+    ._dpdesc { display: none; }
+    ._dph { padding: 10px 14px 8px; }
+    ._dpb { padding: 10px 14px 14px; }
+
+    #_dpBtn {
+      top: calc(var(--hdr) + 52px);
+      right: 8px;
+      transform: none;
+      width: auto;
+      padding: 10px 16px;
+    }
+  }
+
+  @media (orientation: landscape) and (max-height: 560px) {
+    #_dpBtn {
+      top: calc(var(--hdr) + -36.5px);
+      right: 49px;
+      transform: none;
+    }
+
+    #_dpCard {
+      top: 40.5%;
+      right: 8px;
+      transform: translateY(-50%);
+    }
+  }
+</style>
+<button id="_dpBtn" onclick="document.getElementById('_dpCard').classList.toggle('open')">🔑 Demo
+  <span class="_dpParticle" style="--x: -52px; --y: -8px; --delay: 0s;">★</span>
+  <span class="_dpParticle" style="--x: 52px; --y: 12px; --delay: 0.3s;">★</span>
+  <span class="_dpParticle" style="--x: -50px; --y: 8px; --delay: 0.15s;">★</span>
+  <span class="_dpParticle" style="--x: 54px; --y: -6px; --delay: 0.45s;">★</span>
+</button>
+<div id="_dpCard">
+  <div class="_dph">
+    <span class="_dpl">
+      <span class="_dpd"></span>
+      Přístup správce
+    </span>
+    <button class="_dpx" onclick="document.getElementById('_dpCard').classList.remove('open')" title="Zavřít">✕</button>
+  </div>
+
+  <div class="_dpb">
+    <p class="_dpdesc">Demo přihlášení do správy událostí a pokročilého režimu mapy.</p>
+
+    <div class="_dpf">
+      <span class="_dpicon">🔑</span>
+      <span class="_dpv" id="pwdText">ObecB0latice#Mapa</span>
+      <button class="_dpc" id="pwdCopyBtn" title="Kopírovat heslo" onclick="copyPwd()">⧉</button>
+    </div>
+
+    <p class="_dpn">
+      ⚠️ Demo heslo — pouze pro prezentační účely
+    </p>
+  </div>
+
+</div>
+
+<script>
+function copyPwd() {
+  const txt = document.getElementById('pwdText').textContent;
+  navigator.clipboard.writeText(txt).then(() => {
+    const btn = document.getElementById('pwdCopyBtn');
+    btn.classList.add('copied');
+    btn.textContent = '✓';
+    setTimeout(() => {
+      btn.classList.remove('copied');
+      btn.textContent = '⧉';
+    }, 1800);
+  }).catch(() => {
+    // Fallback pro starší prohlížeče
+    const range = document.createRange();
+    range.selectNode(document.getElementById('pwdText'));
+    window.getSelection().removeAllRanges();
+    window.getSelection().addRange(range);
+    document.execCommand('copy');
+    window.getSelection().removeAllRanges();
+  });
+}
+</script>
+<!-- ══ /DEMO HESLO ══ -->
+
 </body>
 </html>
